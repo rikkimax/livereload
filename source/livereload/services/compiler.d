@@ -113,7 +113,7 @@ private {
 		}
 		foreach(name; codeDependencies.keys) {
 			foreach(d; dirEntries(pathToFiles, name, SpanMode.depth)) {
-				cmd ~= " -I" ~ d.name;
+				cmd ~= " -I" ~ d.name ~ " -J" ~ d.name;
 			}
 		}
 		
