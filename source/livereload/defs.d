@@ -162,8 +162,13 @@ class LiveReload : ILiveReload {
 
 		start_monitoring();
 		foreach(name; codeUnitNames) {
-			foreach(file; codeUnitsForName(name)) {
-				handleRecompilationRerun(name, file);
+
+			if (isCodeUnitADirectory(name)) {
+				handleRecompilationRerun(name, null);
+			} else {
+				foreach(file; codeUnitsForName(name)) {
+					handleRecompilationRerun(name, file);
+				}
 			}
 		}
 	}

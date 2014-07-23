@@ -105,7 +105,7 @@ mixin template NodeRunner() {
 	void executeCodeUnit(string name, string file) {
 		import std.string : indexOf;
 
-		string useName = name ~ file;
+		string useName = name ~ (file is null ? "" : "");
 		string file2 = lastNameOfPath(name, file);
 
 		synchronized
@@ -309,8 +309,17 @@ mixin template Compilation() {
 		import std.string : indexOf;
 		import std.file : dirEntries, SpanMode;
 
-		// determine dependency files
 		string[] files;
+		if (isCodeUnitADirectory(name)) {
+			file = codeUnitGlob(name);
+			foreach(entry; dirEntries(buildPath(pathOfFiles, file), "*.d", SpanMode.depth)) {
+				files ~= entry.name;
+			}
+		} else {
+			files ~= file;
+		}
+
+		// determine dependency files
 		bool[string] tfiles;
 	FN1: foreach(r, globs; config.dirDependencies) {
 			auto reg = regex(r);
@@ -323,8 +332,7 @@ mixin template Compilation() {
 				continue FN1;
 			}
 		}
-		files = tfiles.keys;
-		files ~= file;
+		files ~= tfiles.keys;
 		tfiles.clear();
 
 		// determines' versions
@@ -397,9 +405,9 @@ mixin template Compilation() {
 	string codeUnitBinaryPath(string name, string file) {
 		import std.path : dirName, baseName;
 		import std.datetime : Clock;
-		string useName = name ~ file;
+		string useName = name ~ (file is null ? "" : "");
 
-		string ret = buildPath(pathOfFiles, config.outputDir, baseName(file) ~ "_" ~ to!string(Path(dirName(file)).length) ~ "_" ~ to!string(Clock.currTime().toUnixTime()));
+		string ret = buildPath(pathOfFiles, config.outputDir, name ~ "_" ~ baseName(file) ~ "_" ~ to!string(Path(dirName(file)).length) ~ "_" ~ to!string(Clock.currTime().toUnixTime()));
 
 		// TODO: are other extensions required?
 		version(Windows) {
@@ -412,7 +420,7 @@ mixin template Compilation() {
 	}
 
 	string lastNameOfPath(string name, string file) {
-		string useName = name ~ file;
+		string useName = name ~ (file is null ? "" : "");
 		synchronized
 			return cast()namesOfCodeUnitsBins[useName];
 	}
