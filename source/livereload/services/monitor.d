@@ -34,7 +34,7 @@ void monitorService(string pathToFiles, string configFile) {
 						}
 					}
 					
-					while(isCompiling(pathToFiles))
+					while(isCompiling())
 						sleep(500.msecs);
 					synchronized
 						changesOccured(changes2, cast()config);
@@ -55,7 +55,7 @@ void monitorService(string pathToFiles, string configFile) {
 
 				// pathToFiles
 				if (watcher.readChanges(changes)) {
-					while(isCompiling(pathToFiles))
+					while(isCompiling())
 						sleep(500.msecs);
 					synchronized
 						changesOccured(changes, cast()config);

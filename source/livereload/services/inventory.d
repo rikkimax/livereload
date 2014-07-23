@@ -1,14 +1,26 @@
 ﻿module livereload.services.inventory;
 import livereload.config.defs;
+import livereload.services.compiler;
+import livereload.app;
 import vibe.core.file;
+import std.path : buildPath;
+import std.algorithm : equal;
 
 /**
  * When a change has occured to the filesystem, decide what should be recompiled
  */
 void changesOccured(DirectoryChange[] changes, LiveReloadConfig config) {
 	// TODO:
+	PathEntry[] dubDepParts = splitPath(buildPath(pathToFiles, config.dependencyDir));
 
 	// foreach file
+	foreach(change; changes) {
+		PathEntry[] pathParts = splitPath(change.path.toString());
+		if(dubDepParts.equal(pathParts)) {
+			redubify();
+			entireRecompile();
+		}
+
 	//  is it under deps dir?
 	//  if it is get all code units recompile them all.
 	//  return;
@@ -31,6 +43,11 @@ void changesOccured(DirectoryChange[] changes, LiveReloadConfig config) {
 	//     foreach file in dir recursive
 	//      if is code unit
 	//       handleCodeUnitRecompile(name, config);
+	}
+}
+
+void entireRecompile() {
+
 }
 
 /**

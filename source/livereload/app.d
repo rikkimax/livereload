@@ -7,9 +7,14 @@ import std.file : getcwd, exists, isFile, read;
 import std.process : execute;
 import std.path : buildPath;
 
+shared {
+	string pathToFiles;
+}
+
 void main(string[] args) {
-	string pathToFiles = getcwd();
-	getOption("path", &pathToFiles, "Path of the files to operate on");
+	pathToFiles = getcwd();
+
+	getOption("path", cast(string*)&pathToFiles, "Path of the files to operate on");
 	string compiler = "dmd";
 	getOption("compiler", &compiler, "Compiler to use. Default: dmd");
 	string configFile;
@@ -44,7 +49,7 @@ void main(string[] args) {
 	}
 
 	monitorService(pathToFiles, configFile);
-	compilerService(pathToFiles, compiler);
+	compilerService(compiler);
 }
 
 bool testFor(string app) {
