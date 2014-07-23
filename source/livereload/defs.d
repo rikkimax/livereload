@@ -145,7 +145,7 @@ class LiveReload : ILiveReload {
 		pathOfFiles_ = cast(shared)path;
 		compilerPath_ = cast(shared)compilerPath;
 		configFilePath_ = cast(shared)configFilePath;
-		config_ = cast(shared)loadConfig(path);
+		config_ = cast(shared)loadConfig(readText(path));
 
 		foreach(handler; cast(ICompilationHandler[])compilationHelpers) {
 			if (handler.canHandle(compilerPath)) {

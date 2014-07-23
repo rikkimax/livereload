@@ -2,8 +2,8 @@
 import livereload.defs;
 
 import vibe.d;
-import std.file : getcwd, exists, isFile, read;
-import std.process : execute;
+import std.file : getcwd, exists, isFile, read, chdir;
+import std.process : execute, environment;
 import std.path : buildPath;
 
 shared {
@@ -11,6 +11,19 @@ shared {
 }
 
 void main(string[] args) {
+	version(Windows) {
+		if (environment.get("PWD", "") != "") {
+			// most likely e.g. cygwin *grumble*
+			auto value = execute(["cygpath", "-w", environment.get("PWD", "")]);
+			if (value.output[$-1] == '\n')
+				value.output.length--;
+			chdir(environment.get("CD", value.output));
+		} else {
+			chdir(environment.get("CD", getcwd()));
+		}
+	} else {
+		chdir(environment.get("PWD", environment.get("CD", getcwd())));
+	}
 	pathToFiles = getcwd();
 
 	getOption("path", cast(string*)&pathToFiles, "Path of the files to operate on");
