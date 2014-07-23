@@ -153,6 +153,8 @@ class LiveReload : ILiveReload {
 				break;
 			}
 		}
+
+		start();
 	}
 
 	void start() {
