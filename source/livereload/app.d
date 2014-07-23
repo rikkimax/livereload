@@ -1,6 +1,5 @@
 ﻿module livereload.app;
-import livereload.services.monitor : monitorService;
-import livereload.services.compiler : compilerService;
+import livereload.defs;
 
 import vibe.d;
 import std.file : getcwd, exists, isFile, read;
@@ -48,8 +47,7 @@ void main(string[] args) {
 		return;
 	}
 
-	monitorService(pathToFiles, configFile);
-	compilerService(compiler);
+	new LiveReload(pathToFiles, compiler, configFile);
 }
 
 bool testFor(string app) {
