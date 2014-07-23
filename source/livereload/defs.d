@@ -97,7 +97,7 @@ interface ILiveReload {
 }
 
 interface ICompilationHandler {
-	bool compileExecutable(ILiveReload reload, string binFile, string[] files, string[] versions, string[] dependencyDirs, string[] strImports);
+	bool compileExecutable(ILiveReload reload, string binFile, string[] files, string[] versions, string[] dependencyDirs, string[] strImports, string codeUnitName);
 	bool canHandle(string compiler);
 }
 

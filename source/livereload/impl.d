@@ -364,7 +364,7 @@ mixin template Compilation() {
 		scope(exit) isCompiling_ = false;
 
 		// TODO: assuming executable, perhaps shared libraries should be supported?
-		return (cast()compileHandler_).compileExecutable(this, codeUnitBinaryPath(name, file), files, usingVersions.keys, dependencyDirs.keys, strImports.keys);
+		return (cast()compileHandler_).compileExecutable(this, codeUnitBinaryPath(name, file), files, usingVersions.keys, dependencyDirs.keys, strImports.keys, name);
 	}
 
 	void handleRecompilationRerun(string name, string file) {
