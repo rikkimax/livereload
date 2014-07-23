@@ -160,9 +160,10 @@ class LiveReload : ILiveReload {
 	void start() {
 		assert(checkToolchain(), "Toolchain is not ok, check your PATH variable");
 
+		start_monitoring();
 		foreach(name; codeUnitNames) {
 			foreach(file; codeUnitsForName(name)) {
-				compileCodeUnit(name, file);
+				handleRecompilationRerun(name, file);
 			}
 		}
 	}

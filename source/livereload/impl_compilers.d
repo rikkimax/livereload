@@ -7,11 +7,11 @@ class DmdHandler : ICompilationHandler {
 	bool compileExecutable(ILiveReload reload, string binFile, string[] files, string[] versions, string[] dependencyDirs, string[] strImports, string codeUnitName) {
 		import livereload.util : split;
 		import std.process;
-		
+
 		string cmd = dmdCompileCommand(reload.pathOfFiles, reload.compilerPath, reload.config, binFile, files, versions, codeUnitName, dependencyDirs, strImports);
 		auto ret = execute(cmd.split(" "));
-		
-		return ret.status != 0;
+
+		return ret.status == 0;
 	}
 
 	bool canHandle(string compiler) {
@@ -27,6 +27,7 @@ shared static this() {
 private {
 	string dmdCompileCommand(string pathOfFiles, string compilerPath, LiveReloadConfig config, string binFile, string[] files, string[] versions, string unitName, string[] dependencyDirs, string[] strImports) {
 		import livereload.util : replace;
+		import std.file : exists;
 
 		string cmd;
 		
@@ -41,7 +42,10 @@ private {
 		
 		cmd ~= " -I" ~ buildPath(pathOfFiles, "deps", "imports", unitName);
 		// TODO: will it always be a .lib?
-		cmd ~= " " ~ buildPath(pathOfFiles, "bin", unitName ~ ".lib");
+
+		string libFile = buildPath(pathOfFiles, "deps", "bin", unitName ~ ".lib");
+		if (exists(libFile))
+			cmd ~= " " ~ libFile;
 
 		foreach(dep; dependencyDirs) {
 			cmd ~= " -I" ~ dep;

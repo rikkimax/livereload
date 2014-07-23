@@ -29,16 +29,25 @@ mixin template CodeUnits() {
 	}
 
 	string[] codeUnitsForName(string name) {
+		import livereload.util : replace;
+		import std.path : globMatch;
 		import std.file : dirEntries, SpanMode;
 		import std.string : indexOf;
 
 		string glob = codeUnitGlob(name);
 		if (glob !is null) {
-			if (!isCodeUnitADirectory(name)) {
-				string[] ret;
+			if (!isCodeUnitADirectory(glob)) {
+				version(Windows) {
+					glob = glob.replace("/", "\\");
+				} else version(Posix) {
+					glob = glob.replace("\\", "/");
+				}
 
-				foreach(entry; dirEntries(pathOfFiles, glob, SpanMode.depth)) {
-					ret ~= entry.name;
+				string[] ret;
+				foreach(entry; dirEntries(pathOfFiles, SpanMode.depth)) {
+					if (globMatch(entry.name, buildPath(pathOfFiles, glob))) {
+						ret ~= entry.name;
+					}
 				}
 
 				return ret;
@@ -60,7 +69,7 @@ mixin template CodeUnits() {
 		foreach(cu; config.codeUnits) {
 			if (cu.length >= name.length) {
 				if (cu[0 .. name.length] == name) {
-					return name;
+					return cu;
 				}
 			}
 		}
@@ -71,13 +80,13 @@ mixin template CodeUnits() {
 mixin template ToolChain() {
 	bool checkToolchain() {
 		import std.process : execute, thisProcessID;
-		import std.file : tempDir, mkdirRecurse, rmdir;
+		import std.file : tempDir, mkdirRecurse, rmdirRecurse;
 		import std.conv : to;
 
 		string testTmp = buildPath(tempDir(), to!string(thisProcessID));
 		if (!exists(testTmp))
 			mkdirRecurse(testTmp);
-		scope(exit) rmdir(testTmp);
+		scope(exit) rmdirRecurse(testTmp);
 
 		execute(["dub", "init", testTmp]);
 		if (compilerPath is null)
@@ -95,6 +104,7 @@ mixin template NodeRunner() {
 
 	void executeCodeUnit(string name, string file) {
 		import std.string : indexOf;
+
 		string useName = name ~ file;
 		string file2 = lastNameOfPath(name, file);
 
@@ -147,32 +157,35 @@ mixin template MonitorService() {
 			// optimize for single directory that contains both configuration file and the general files
 			
 			tasksToKill ~= cast(shared)runTask({
-				DirectoryWatcher watcher = watchDirectory(pathOfFiles);
-				
-				while(true) {
-					DirectoryChange[] changes;
-					DirectoryChange[] changes2;
+				version(none) {
+					// TODO: implement a DirectoryWatcher instead of using watchDirectory temporarily.
+					DirectoryWatcher watcher = watchDirectory(pathOfFiles);
 					
-					if (watcher.readChanges(changes)) {
-						foreach(change; changes) {
-							if (change.path.head == configFileName) {
-								if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
-									// reload config
-									synchronized
-										config_ = cast(shared)loadConfig(cast(string)ifile.read(configFilePath));
-								} else {
-									changes2 ~= change;
+					while(true) {
+						DirectoryChange[] changes;
+						DirectoryChange[] changes2;
+						
+						if (watcher.readChanges(changes)) {
+							foreach(change; changes) {
+								if (change.path.head == configFileName) {
+									if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
+										// reload config
+										synchronized
+											config_ = cast(shared)loadConfig(cast(string)ifile.read(configFilePath));
+									} else {
+										changes2 ~= change;
+									}
 								}
 							}
+							
+							while(isCompiling())
+								sleep(500.msecs);
+							synchronized
+								changesOccured(changes2);
 						}
 						
-						while(isCompiling())
-							sleep(500.msecs);
-						synchronized
-							changesOccured(changes2);
+						sleep(1.seconds);
 					}
-					
-					sleep(1.seconds);
 				}
 			});
 		} else {
@@ -311,6 +324,7 @@ mixin template Compilation() {
 			}
 		}
 		files = tfiles.keys;
+		files ~= file;
 		tfiles.clear();
 
 		// determines' versions
@@ -363,8 +377,9 @@ mixin template Compilation() {
 		isCompiling_ = true;
 		scope(exit) isCompiling_ = false;
 
+		string binFile = codeUnitBinaryPath(name, file);
 		// TODO: assuming executable, perhaps shared libraries should be supported?
-		return (cast()compileHandler_).compileExecutable(this, codeUnitBinaryPath(name, file), files, usingVersions.keys, dependencyDirs.keys, strImports.keys, name);
+		return (cast()compileHandler_).compileExecutable(this, binFile, files, usingVersions.keys, dependencyDirs.keys, strImports.keys, name);
 	}
 
 	void handleRecompilationRerun(string name, string file) {
