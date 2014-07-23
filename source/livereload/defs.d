@@ -186,7 +186,7 @@ class LiveReload : ILiveReload {
 	mixin CodeUnits; // util for code units
 	mixin ToolChain; // confirm we can compile
 	mixin MonitorService; // tell us when changes occur in file system
-	mixin ChangeHandling;
-	mixin Compilation;
-	mixin NodeRunner;
+	mixin ChangeHandling; // transforms the changes that occured into code unit names and main files for compilation/running
+	mixin Compilation; // compiles code
+	mixin NodeRunner; // runs code unit files
 }
