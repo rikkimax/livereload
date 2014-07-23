@@ -147,6 +147,7 @@ mixin template NodeRunner() {
 
 mixin template MonitorService() {
 	void start_monitoring() {
+		import livereload.util : watchDirectory2;
 		import std.path : dirName, baseName;
 		import ifile = std.file;
 
@@ -157,35 +158,33 @@ mixin template MonitorService() {
 			// optimize for single directory that contains both configuration file and the general files
 			
 			tasksToKill ~= cast(shared)runTask({
-				version(none) {
-					// TODO: implement a DirectoryWatcher instead of using watchDirectory temporarily.
-					DirectoryWatcher watcher = watchDirectory(pathOfFiles);
+				// TODO: implement a DirectoryWatcher instead of using watchDirectory temporarily.
+				DirectoryWatcher watcher = watchDirectory2(pathOfFiles);
+				
+				while(true) {
+					DirectoryChange[] changes;
+					DirectoryChange[] changes2;
 					
-					while(true) {
-						DirectoryChange[] changes;
-						DirectoryChange[] changes2;
-						
-						if (watcher.readChanges(changes)) {
-							foreach(change; changes) {
-								if (change.path.head == configFileName) {
-									if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
-										// reload config
-										synchronized
-											config_ = cast(shared)loadConfig(cast(string)ifile.read(configFilePath));
-									} else {
-										changes2 ~= change;
-									}
+					if (watcher.readChanges(changes)) {
+						foreach(change; changes) {
+							if (change.path.head == configFileName) {
+								if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
+									// reload config
+									synchronized
+										config_ = cast(shared)loadConfig(cast(string)ifile.read(configFilePath));
 								}
+							} else {
+								changes2 ~= change;
 							}
-							
-							while(isCompiling())
-								sleep(500.msecs);
-							synchronized
-								changesOccured(changes2);
 						}
 						
-						sleep(1.seconds);
+						while(isCompiling())
+							sleep(500.msecs);
+						synchronized
+							changesOccured(changes2);
 					}
+					
+					sleep(1.seconds);
 				}
 			});
 		} else {
@@ -229,7 +228,6 @@ mixin template MonitorService() {
 	}
 }
 
-// TODO:
 mixin template ChangeHandling() {
 	private shared {
 		string[][string][string] onFileDependencies; 
@@ -242,6 +240,8 @@ mixin template ChangeHandling() {
 		foreach(change; changes) {
 			if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
 				bool[string] unitsToChange;
+				if (change.path.startsWith(Path(buildPath(pathOfFiles, config.outputDir))))
+					continue;
 
 				foreach(dept1d, dept1dv; config.dirDependencies) {
 					foreach(dept2d; dept1dv) {
@@ -254,12 +254,14 @@ mixin template ChangeHandling() {
 				}
 
 				foreach(unit; config.codeUnits) {
-					foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
-						foreach(utc; unitsToChange.keys) {
-							if (globMatch(cue, utc)) {
-								string name = codeUnitNameForFile(cue);
-								onFileDependencies[name][cue] = [];
-								handleRecompilationRerun(name, cue);
+					if (unit.indexOf("*") >= 0) {
+						foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
+							foreach(utc; unitsToChange.keys) {
+								if (globMatch(cue, utc)) {
+									string name = codeUnitNameForFile(cue);
+									onFileDependencies[name][cue] = [];
+									handleRecompilationRerun(name, cue);
+								}
 							}
 						}
 					}
@@ -283,6 +285,13 @@ mixin template ChangeHandling() {
 						}
 					}
 				}
+
+				string name = codeUnitNameForFile(change.path.toNativeString());
+				string file = change.path.toNativeString();
+				if (name !is null) {
+					onFileDependencies[name][file] = [];
+					handleRecompilationRerun(name, file);
+				}
 			} else {
 				stopCodeUnit(codeUnitNameForFile(change.path.toString()), change.path.toString());
 			}
@@ -290,7 +299,6 @@ mixin template ChangeHandling() {
 	}
 
 	void gotAnOutputLine(string name, string file, string line) {
-		//TODO: injects dependencies for this code unit main source file
 		import std.string : toLower, strip;
 
 		if (line.length > "#{dependency, ".length) {
