@@ -2,16 +2,31 @@
 import livereload.defs;
 import livereload.config.defs;
 import std.path : buildPath;
+import ofile = std.file;
 
 class DmdHandler : ICompilationHandler {
 	bool compileExecutable(ILiveReload reload, string binFile, string[] files, string[] versions, string[] dependencyDirs, string[] strImports, string codeUnitName) {
 		import livereload.util : split;
 		import std.process;
 
+		string logDir = buildPath(reload.pathOfFiles, reload.config.outputDir, "logs");
+		if (!ofile.exists(logDir))
+			ofile.mkdirRecurse(logDir);
+		string logFile = buildPath(logDir, "compilation.log");
+		if(!ofile.exists(logFile))
+			ofile.write(logFile, "");
+
 		string cmd = dmdCompileCommand(reload.pathOfFiles, reload.compilerPath, reload.config, binFile, files, versions, codeUnitName, dependencyDirs, strImports);
+		ofile.append(logFile, "Running compiler command: " ~ cmd ~ "\r\n");
+
 		auto ret = execute(cmd.split(" "));
 
-		return ret.status == 0;
+		if (!ofile.exists(binFile) || ret.status != 0) {
+			ofile.append(logFile, ret.output);
+			return false;
+		}
+
+		return true;
 	}
 
 	bool canHandle(string compiler) {

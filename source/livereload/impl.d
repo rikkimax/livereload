@@ -104,35 +104,45 @@ mixin template NodeRunner() {
 
 	void executeCodeUnit(string name, string file) {
 		import std.string : indexOf;
+		import ofile = std.file;
 
 		string useName = name ~ (file is null ? "" : "");
 		string file2 = lastNameOfPath(name, file);
 
-		synchronized
-			if (file2 in pidFiles)
-				stopCodeUnit(name, file);
-
-		auto pipe = pipe();
-		auto pid = spawnProcess(file2, std.stdio.stdin, pipe.writeEnd);
-		synchronized
-			pidFiles[useName] = cast(shared)pid;
-			
+		if (file2 in pidFiles)
+			stopCodeUnit(name, file);
+				
 		tasksToKill ~= runTask({
-			auto reader = pipe.readEnd;
-
-			while(useName in pidFiles && reader.isOpen) {
-				string line = reader.readln();
-				if (line.length > 5) {
-					if (line[0 .. 2] == "#{" && line[$-2 .. $] == "}#") {
-						if (line.indexOf(",") > 2) {
-							gotAnOutputLine(name, file, line);
+			try {
+				auto pipes = pipeProcess(file2, Redirect.stdout | Redirect.stderr);
+				synchronized
+					pidFiles[useName] = cast(shared)pipes.pid;
+					
+				string logFile = buildPath(pathOfFiles, config.outputDir, "logs", "output", name ~ ".log");
+				ofile.mkdirRecurse(buildPath(pathOfFiles, config.outputDir, "logs", "output"));
+				if(!ofile.exists(logFile))
+					ofile.write(logFile, "");
+					
+				while(useName in pidFiles && pipes.stdout.isOpen) {
+					string line = pipes.stdout.readln();
+					if (line != "") {
+						ofile.append(logFile, file2 ~ ":\t" ~ line); // \r\n ext. added by process
+						if (line.length > 5) {
+							if (line[0 .. 2] == "#{" && line[$-2 .. $] == "}#") {
+								if (line.indexOf(",") > 2) {
+									gotAnOutputLine(name, file, line);
+								}
+							}
 						}
 					}
 				}
+				wait(pipes.pid);
+				synchronized
+					pidFiles.remove(useName);
+			} catch(Exception e) {
+				// don't worry about it.
+				logInfo("File %s failed to run, or died during execution", file);
 			}
-		
-			synchronized
-				pidFiles.remove(useName);
 		});
 	}
 
@@ -316,29 +326,34 @@ mixin template Compilation() {
 		import std.path : dirName;
 		import std.string : indexOf;
 		import std.file : dirEntries, SpanMode;
+		import ofile = std.file;
+		import std.datetime : Clock;
 
-		Path bininfopath = Path(pathOfFiles) ~ Path(config.outputDir) ~ Path("bininfo.d");
-		writeFileUTF8(bininfopath, "module livereload.bininfo;\r\n");
+		string bininfopath = (Path(pathOfFiles) ~ Path(config.outputDir) ~ Path("bininfo.d")).toNativeString();
+		string binOutFile = "module livereload.bininfo;\r\n";
 
 		string[] files;
-		appendToFile(bininfopath, "enum string[] CODE_UNITS = [");
+		binOutFile ~= "enum string[] CODE_UNITS = [";
 		if (isCodeUnitADirectory(name)) {
 			file = codeUnitGlob(name);
 			foreach(entry; dirEntries(buildPath(pathOfFiles, file), "*.d", SpanMode.depth)) {
-				files ~= entry.name;
+				if (ofile.exists(entry.name) && ofile.isFile(entry.name)) {
+					files ~= entry.name;
 
-				string modul = getModuleFromFile(entry.name);
-				if (modul !is null)
-					appendToFile(bininfopath, "\"" ~ modul ~ "\",");
+					string modul = getModuleFromFile(entry.name);
+					if (modul !is null)
+						binOutFile ~= "\"" ~ modul ~ "\",";
+				}
 			}
 		} else {
-			files ~= file;
+			if (ofile.exists(file) && ofile.isFile(file))
+				files ~= file;
 
 			string modul = getModuleFromFile(file);
 			if (modul !is null)
-				appendToFile(bininfopath, "\"" ~ modul ~ "\"");
+				binOutFile ~= "\"" ~ modul ~ "\"";
 		}
-		appendToFile(bininfopath, "];\r\n");
+		binOutFile ~= "];\r\n";
 
 		// determine dependency files
 		bool[string] tfiles;
@@ -347,7 +362,8 @@ mixin template Compilation() {
 			foreach(match; matchAll(file, reg)) {
 				foreach(glob; globs) {
 					foreach(entry; dirEntries(pathOfFiles, glob, SpanMode.depth)) {
-						tfiles[entry.name] = true;
+						if (ofile.exists(entry.name) && ofile.isFile(entry.name))
+							tfiles[entry.name] = true;
 					}
 				}
 				continue FN1;
@@ -408,14 +424,16 @@ mixin template Compilation() {
 
 		string binFile = codeUnitBinaryPath(name, file);
 
-		appendToFile(bininfopath, "enum string[] DFILES = [");
+		binOutFile ~= "enum string[] DFILES = [";
 		foreach(filez; files) {
 			string modul = getModuleFromFile(filez);
 			if (modul !is null)
-				appendToFile(bininfopath, "\"" ~ modul ~ "\",");
+				binOutFile ~= "\"" ~ modul ~ "\",";
 		}
-		appendToFile(bininfopath, "];\r\n");
-		files ~= bininfopath.toNativeString();
+		binOutFile ~= "];\r\n";
+		ofile.write(bininfopath, binOutFile);
+		files ~= bininfopath;
+
 
 		// TODO: assuming executable, perhaps shared libraries should be supported?
 		return (cast()compileHandler_).compileExecutable(this, binFile, files, usingVersions.keys, dependencyDirs.keys, strImports.keys, name);
