@@ -317,15 +317,28 @@ mixin template Compilation() {
 		import std.string : indexOf;
 		import std.file : dirEntries, SpanMode;
 
+		Path bininfopath = Path(pathOfFiles) ~ Path(config.outputDir) ~ Path("bininfo.d");
+		writeFileUTF8(bininfopath, "module livereload.bininfo;\r\n");
+
 		string[] files;
+		appendToFile(bininfopath, "enum string[] CODE_UNITS = [");
 		if (isCodeUnitADirectory(name)) {
 			file = codeUnitGlob(name);
 			foreach(entry; dirEntries(buildPath(pathOfFiles, file), "*.d", SpanMode.depth)) {
 				files ~= entry.name;
+
+				string modul = getModuleFromFile(entry.name);
+				if (modul !is null)
+					appendToFile(bininfopath, "\"" ~ modul ~ "\",");
 			}
 		} else {
 			files ~= file;
+
+			string modul = getModuleFromFile(file);
+			if (modul !is null)
+				appendToFile(bininfopath, "\"" ~ modul ~ "\"");
 		}
+		appendToFile(bininfopath, "];\r\n");
 
 		// determine dependency files
 		bool[string] tfiles;
@@ -394,6 +407,16 @@ mixin template Compilation() {
 		scope(exit) isCompiling_ = false;
 
 		string binFile = codeUnitBinaryPath(name, file);
+
+		appendToFile(bininfopath, "enum string[] DFILES = [");
+		foreach(filez; files) {
+			string modul = getModuleFromFile(filez);
+			if (modul !is null)
+				appendToFile(bininfopath, "\"" ~ modul ~ "\",");
+		}
+		appendToFile(bininfopath, "];\r\n");
+		files ~= bininfopath.toNativeString();
+
 		// TODO: assuming executable, perhaps shared libraries should be supported?
 		return (cast()compileHandler_).compileExecutable(this, binFile, files, usingVersions.keys, dependencyDirs.keys, strImports.keys, name);
 	}
@@ -432,4 +455,21 @@ mixin template Compilation() {
 		synchronized
 			return cast()namesOfCodeUnitsBins[useName];
 	}
+}
+
+string getModuleFromFile(string file) {
+	import std.regex : ctRegex, matchAll;
+	import std.file : exists, isFile;
+
+	if (exists(file) && isFile(file)){}
+	else
+		return null;
+
+	string text = readFileUTF8(Path(file));
+	auto reg = ctRegex!`module (?P<name>[a-zA-Z_\.0-9]+);`;
+	auto matches = matchAll(text, reg);
+	foreach(match; matches) {
+		return match["name"];
+	}
+	return null;
 }
