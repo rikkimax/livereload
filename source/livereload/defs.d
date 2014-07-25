@@ -173,16 +173,6 @@ class LiveReload : ILiveReload {
 		assert(checkToolchain(), "Toolchain is not ok, check your PATH variable");
 
 		start_monitoring();
-		foreach(name; codeUnitNames) {
-
-			if (isCodeUnitADirectory(name)) {
-				handleRecompilationRerun(name, null);
-			} else {
-				foreach(file; codeUnitsForName(name)) {
-					handleRecompilationRerun(name, file);
-				}
-			}
-		}
 	}
 
 	void stop() {
