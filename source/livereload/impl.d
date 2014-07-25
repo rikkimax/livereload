@@ -298,20 +298,24 @@ mixin template ChangeHandling() {
 
 			F1: foreach(unit; config.codeUnits) {
 					if (isCodeUnitADirectory(globCodeUnitName(unit))) {
-						codeUnitFilesThatChanged[unit] = (bool[string]).init;
+						if (Path(relPath).startsWith(Path(unit))) {
+							codeUnitFilesThatChanged[unit] = (bool[string]).init;
+						}
 					} else {
 						foreach(depDir; dependentDirectories) {
-							if (depDir == unit) {
-								// all code unit files need to be changed.
-								foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
-									if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
-										codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
+							if (globMatch(relPath, depDir)) {
+								if (depDir == unit) {
+									// all code unit files need to be changed.
+									foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
+										if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
+											codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
+										}
 									}
-								}
-							} else {
-								foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
-									if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
-										codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
+								} else {
+									foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
+										if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
+											codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
+										}
 									}
 								}
 							}
