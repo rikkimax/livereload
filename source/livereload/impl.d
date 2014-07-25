@@ -75,6 +75,33 @@ mixin template CodeUnits() {
 		}
 		return null;
 	}
+
+	string globCodeUnitName(string glob) {
+		foreach(cu; config.codeUnits) {
+			if (cu == glob) {
+				Path cuPath = Path(cu);
+				if (cuPath.length > 0)
+					return cuPath.nodes[0].toString();
+			}
+		}
+		return null;
+	}
+
+	string[] dependedUponDirectories(string file) {
+		import std.path : globMatch;
+		
+		bool[string] ret; // DependedOnFile[][DependentDirectory]
+	F1: foreach(dept1d, dept1dv; config.dirDependencies) {
+			foreach(dept2d; dept1dv) {
+				if (globMatch(file, dept2d)) {
+					ret[dept1d] = true;
+					continue F1;
+				}
+			}
+		}
+		
+		return ret.keys;
+	}
 }
 
 mixin template ToolChain() {
@@ -122,10 +149,11 @@ mixin template NodeRunner() {
 				ofile.mkdirRecurse(buildPath(pathOfFiles, config.outputDir, "logs", "output"));
 				if(!ofile.exists(logFile))
 					ofile.write(logFile, "");
-					
-				while(useName in pidFiles && pipes.stdout.isOpen) {
-					string line = pipes.stdout.readln();
-					if (line != "") {
+
+				// Ehhh something isn't right. pipeProcess pipes are blocking the entire program
+				/*while(useName in pidFiles && pipes.stdout.isOpen) {
+					//string line = pipes.stdout.readln();
+					/*if (line != "") {
 						ofile.append(logFile, file2 ~ ":\t" ~ line); // \r\n ext. added by process
 						if (line.length > 5) {
 							if (line[0 .. 2] == "#{" && line[$-2 .. $] == "}#") {
@@ -134,8 +162,8 @@ mixin template NodeRunner() {
 								}
 							}
 						}
-					}
-				}
+					}*/
+				//}
 				wait(pipes.pid);
 				synchronized
 					pidFiles.remove(useName);
@@ -194,15 +222,15 @@ mixin template MonitorService() {
 							changesOccured(changes2);
 					}
 					
-					sleep(1.seconds);
+					sleep(500.msecs);
 				}
 			});
 		} else {
 			// optimize for seperate directories for the configuration file and the general files
 			
 			tasksToKill ~= cast(shared)runTask({
-				DirectoryWatcher watcher = watchDirectory(pathOfFiles);
-				DirectoryWatcher watcher2 = watchDirectory(configDirName, false);
+				DirectoryWatcher watcher = watchDirectory2(pathOfFiles);
+				DirectoryWatcher watcher2 = watchDirectory2(configDirName, false);
 				
 				while(true) {
 					DirectoryChange[] changes;
@@ -231,7 +259,7 @@ mixin template MonitorService() {
 						}
 					}
 					
-					sleep(1.seconds);
+					sleep(500.msecs);
 				}
 			});
 		}
@@ -247,63 +275,54 @@ mixin template ChangeHandling() {
 		import std.file : dirEntries, SpanMode;
 		import std.path : globMatch;
 
+		bool[string][string] codeUnitFilesThatChanged; // -[file][code unit]
+
 		foreach(change; changes) {
 			if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
-				bool[string] unitsToChange;
 				if (change.path.startsWith(Path(buildPath(pathOfFiles, config.outputDir))))
 					continue;
 
-				foreach(dept1d, dept1dv; config.dirDependencies) {
-					foreach(dept2d; dept1dv) {
-						foreach(dept2; dirEntries(pathOfFiles, dept2d, SpanMode.depth)) {
-							if (Path(dept2) == change.path) {
-								unitsToChange[dept1d] = true;
-							}
-						}
-					}
-				}
+				string relPath = change.path.relativeTo(Path(pathOfFiles)).toNativeString();
+				string[] dependentDirectories = dependedUponDirectories(change.path.toNativeString());
 
-				foreach(unit; config.codeUnits) {
-					if (unit.indexOf("*") >= 0) {
-						foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
-							foreach(utc; unitsToChange.keys) {
-								if (globMatch(cue, utc)) {
-									string name = codeUnitNameForFile(cue);
-									onFileDependencies[name][cue] = [];
-									handleRecompilationRerun(name, cue);
+			F1: foreach(unit; config.codeUnits) {
+					if (isCodeUnitADirectory(globCodeUnitName(unit))) {
+						codeUnitFilesThatChanged[unit] = (bool[string]).init;
+					} else {
+						foreach(depDir; dependentDirectories) {
+							if (depDir == unit) {
+								// all code unit files need to be changed.
+								foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
+									if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
+										codeUnitFilesThatChanged[unit][cue] = true;
+									}
+								}
+							} else {
+								foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
+									if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
+										codeUnitFilesThatChanged[unit][cue] = true;
+									}
 								}
 							}
 						}
-					}
-				}
 
-				foreach(name, files; onFileDependencies) {
-					foreach(file, deps; files) {
-						bool isHandled = false;
-						foreach(unit; unitsToChange.keys) {
-							if (Path(file) == Path(unit)) {
-								isHandled = true;
-								break;
-							}
-						}
-
-						if (!isHandled) {
-							foreach(dep; deps) {
-								onFileDependencies[name][file] = [];
-								handleRecompilationRerun(name, file);
-							}
+						if (globMatch(relPath, unit)) {
+							codeUnitFilesThatChanged[unit][relPath] = true;
 						}
 					}
-				}
-
-				string name = codeUnitNameForFile(change.path.toNativeString());
-				string file = change.path.toNativeString();
-				if (name !is null) {
-					onFileDependencies[name][file] = [];
-					handleRecompilationRerun(name, file);
 				}
 			} else {
 				stopCodeUnit(codeUnitNameForFile(change.path.toString()), change.path.toString());
+			}
+		}
+
+		foreach(unit, files; codeUnitFilesThatChanged) {
+			if (isCodeUnitADirectory(globCodeUnitName(unit))) {
+				handleRecompilationRerun(unit, null);
+			} else {
+				foreach(file; files.keys) {
+					handleRecompilationRerun(unit, file);
+				}
 			}
 		}
 	}

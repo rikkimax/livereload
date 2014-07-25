@@ -55,12 +55,24 @@ interface ILiveReload {
 	 * 		An array of main executable files
 	 */
 	string[] codeUnitsForName(string name);
-	
+
+	/**
+	 * What directories does this file, depend on it?
+	 * 
+	 * Param:
+	 * 		file	=	The file to check against
+	 * 
+	 * Returns:
+	 * 		A list of dependent directory globs
+	 */
+	string[] dependedUponDirectories(string file);
+
 	bool checkToolchain();
 	void executeCodeUnit(string name, string file);
 	void stopCodeUnit(string name, string file);
 	bool isCodeUnitADirectory(string name);
 	string codeUnitGlob(string name);
+	string globCodeUnitName(string glob);
 
 	/**
 	 * Compiles a code unit
@@ -186,7 +198,7 @@ class LiveReload : ILiveReload {
 		string compilerPath() { synchronized return cast()compilerPath_; }
 		string configFilePath() { synchronized return cast()configFilePath_; }
 		LiveReloadConfig config() { synchronized return cast()config_; }
-		bool isCompiling() { synchronized return cast()isCompiling_; }
+		bool isCompiling() { return cast()isCompiling_; }
 	}
 
 	mixin CodeUnits; // util for code units
