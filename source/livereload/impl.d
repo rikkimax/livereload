@@ -305,20 +305,20 @@ mixin template ChangeHandling() {
 								// all code unit files need to be changed.
 								foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
 									if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
-										codeUnitFilesThatChanged[unit][cue] = true;
+										codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
 									}
 								}
 							} else {
 								foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
 									if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
-										codeUnitFilesThatChanged[unit][cue] = true;
+										codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
 									}
 								}
 							}
 						}
 
 						if (globMatch(relPath, unit)) {
-							codeUnitFilesThatChanged[unit][relPath] = true;
+							codeUnitFilesThatChanged[globCodeUnitName(unit)][relPath] = true;
 						}
 					}
 				}
