@@ -62,10 +62,7 @@ void main(string[] args) {
 
 	new LiveReload(pathToFiles, compiler, configFile);
 
-	while(true) {
-		import vibe.d : sleep, seconds;
-		sleep(1.seconds);
-	}
+	runEventLoop();
 }
 
 bool testFor(string app) {
