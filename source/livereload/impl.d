@@ -124,54 +124,14 @@ mixin template ToolChain() {
 }
 
 mixin template NodeRunner() {
-	private shared {
+	package shared {
 		import std.process;
 		Pid[string] pidFiles;
 	}
 
 	void executeCodeUnit(string name, string file) {
-		import std.string : indexOf;
-		import ofile = std.file;
-
-		string useName = name ~ (file is null ? "" : "");
-		string file2 = lastNameOfPath(name, file);
-
-		if (file2 in pidFiles)
-			stopCodeUnit(name, file);
-				
-		tasksToKill ~= runTask({
-			try {
-				auto pipes = pipeProcess(file2, Redirect.stdout | Redirect.stderr);
-				synchronized
-					pidFiles[useName] = cast(shared)pipes.pid;
-					
-				string logFile = buildPath(pathOfFiles, config.outputDir, "logs", "output", name ~ ".log");
-				ofile.mkdirRecurse(buildPath(pathOfFiles, config.outputDir, "logs", "output"));
-				if(!ofile.exists(logFile))
-					ofile.write(logFile, "");
-
-				// Ehhh something isn't right. pipeProcess pipes are blocking the entire program
-				/*while(useName in pidFiles && pipes.stdout.isOpen) {
-					//string line = pipes.stdout.readln();
-					/*if (line != "") {
-						ofile.append(logFile, file2 ~ ":\t" ~ line); // \r\n ext. added by process
-						if (line.length > 5) {
-							if (line[0 .. 2] == "#{" && line[$-2 .. $] == "}#") {
-								if (line.indexOf(",") > 2) {
-									gotAnOutputLine(name, file, line);
-								}
-							}
-						}
-					}*/
-				//}
-				wait(pipes.pid);
-				synchronized
-					pidFiles.remove(useName);
-			} catch(Exception e) {
-				// don't worry about it.
-				logInfo("File %s failed to run, or died during execution", file);
-			}
-		});
+		import std.concurrency : spawn;
+		spawn(&executeCodeUnit_, cast(shared)this, name, file);
 	}
 
 	void stopCodeUnit(string name, string file) {
@@ -179,6 +139,57 @@ mixin template NodeRunner() {
 		if (useName in pidFiles) {
 			kill(cast()pidFiles[useName]);
 			// the task that handles the PID will remove it
+		}
+	}
+}
+
+package {
+	void executeCodeUnit_(shared(LiveReload) this_, string name_, string file_) {
+		import std.process;
+		import std.string : indexOf;
+		import ofile = std.file;
+
+		with(cast()this_) {
+			alias name = name_; // Error: with symbol vibe.data.serialization.name is shadowing local symbol livereload.impl.executeCodeUnit_.name
+			alias file = file_;
+
+			string useName = name ~ (file is null ? "" : "");
+			string file2 = lastNameOfPath(name, file);
+			
+			if (file2 in pidFiles)
+				stopCodeUnit(name, file);
+			
+			try {
+				auto pipes = pipeProcess(file2);
+				synchronized
+					pidFiles[useName] = cast(shared)pipes.pid;
+				
+				string logFile = buildPath(pathOfFiles, config.outputDir, "logs", "output", name ~ ".log");
+				ofile.mkdirRecurse(buildPath(pathOfFiles, config.outputDir, "logs", "output"));
+				if(!ofile.exists(logFile))
+					ofile.write(logFile, "");
+
+				// Ehhh something isn't right. pipeProcess pipes are blocking the entire program
+				foreach(line; pipes.stdout.byLine) {
+					if (line != "") {
+						ofile.append(logFile, file2 ~ ":\t" ~ line); // \r\n ext. added by process
+						if (line.length > 5) {
+							if (line[0 .. 2] == "#{" && line[$-2 .. $] == "}#") {
+								if (line.indexOf(",") > 2) {
+									(cast()this_).gotAnOutputLine(name, file, line.idup);
+								}
+							}
+						}
+					}
+				}
+				wait(pipes.pid);
+			} catch(Exception e) {
+				// don't worry about it.
+				logInfo("File %s failed to run, or died during execution", file);
+			}
+			
+			synchronized
+				pidFiles.remove(useName);
 		}
 	}
 }
