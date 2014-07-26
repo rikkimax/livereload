@@ -121,6 +121,17 @@ mixin template ToolChain() {
 		else
 			return execute(["dub", "run", "--compiler=" ~ compilerPath]).status != 0;
 	}
+
+	void rerunDubDependencies() {
+		synchronized
+			isCompiling_ = true;
+		foreach(subp; codeUnitNames()) {
+			auto got = execute(["dub", "build", "deps:" ~ subp, "--root=" ~ (Path(pathOfFiles) ~ Path(config.dependencyDir)).toNativeString(), "--force"]);
+			logInfo(got.output);
+		}
+		synchronized
+			isCompiling_ = false;
+	}
 }
 
 mixin template NodeRunner() {
@@ -287,11 +298,16 @@ mixin template ChangeHandling() {
 		import std.path : globMatch;
 
 		bool[string][string] codeUnitFilesThatChanged; // -[file][code unit]
+		bool dubDirChanged;
 
 		foreach(change; changes) {
 			if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
 				if (change.path.startsWith(Path(buildPath(pathOfFiles, config.outputDir))))
 					continue;
+				if (change.path == (Path(buildPath(pathOfFiles, config.dependencyDir, "package.json")))) {
+					dubDirChanged = true;
+					continue;
+				}
 
 				string relPath = change.path.relativeTo(Path(pathOfFiles)).toNativeString();
 				string[] dependentDirectories = dependedUponDirectories(change.path.toNativeString());
@@ -331,12 +347,27 @@ mixin template ChangeHandling() {
 			}
 		}
 
-		foreach(unit, files; codeUnitFilesThatChanged) {
-			if (isCodeUnitADirectory(globCodeUnitName(unit))) {
-				handleRecompilationRerun(unit, null);
-			} else {
-				foreach(file; files.keys) {
-					handleRecompilationRerun(unit, file);
+		if (dubDirChanged) {
+			rerunDubDependencies();
+
+			// TODO: recompile every code unit available
+			foreach(unit, files; codeUnitFilesThatChanged) {
+				if (isCodeUnitADirectory(globCodeUnitName(unit))) {
+					handleRecompilationRerun(unit, null);
+				} else {
+					foreach(file; files.keys) {
+						handleRecompilationRerun(unit, file);
+					}
+				}
+			}
+		} else {
+			foreach(unit, files; codeUnitFilesThatChanged) {
+				if (isCodeUnitADirectory(globCodeUnitName(unit))) {
+					handleRecompilationRerun(unit, null);
+				} else {
+					foreach(file; files.keys) {
+						handleRecompilationRerun(unit, file);
+					}
 				}
 			}
 		}

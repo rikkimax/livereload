@@ -68,6 +68,7 @@ interface ILiveReload {
 	string[] dependedUponDirectories(string file);
 
 	bool checkToolchain();
+	void rerunDubDependencies();
 	void executeCodeUnit(string name, string file);
 	void stopCodeUnit(string name, string file);
 	bool isCodeUnitADirectory(string name);
@@ -172,6 +173,7 @@ class LiveReload : ILiveReload {
 	void start() {
 		assert(checkToolchain(), "Toolchain is not ok, check your PATH variable");
 
+		rerunDubDependencies();
 		start_monitoring();
 	}
 
