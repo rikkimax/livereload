@@ -58,7 +58,12 @@ private {
 		cmd ~= " -I" ~ buildPath(pathOfFiles, "deps", "imports", unitName);
 		// TODO: will it always be a .lib?
 
-		string libFile = buildPath(pathOfFiles, "deps", "bin", unitName ~ ".lib");
+		string libFile;
+		version(x86_64) {
+			liveFile = buildPath(pathOfFiles, "deps", "bin", unitName ~ "x86_64.lib");
+		} else version(x86) {
+			liveFile = buildPath(pathOfFiles, "deps", "bin", unitName ~ "x86.lib");
+		}
 		if (exists(libFile))
 			cmd ~= " " ~ libFile;
 

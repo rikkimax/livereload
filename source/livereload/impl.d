@@ -123,14 +123,14 @@ mixin template ToolChain() {
 	}
 
 	void rerunDubDependencies() {
-		synchronized
+		/*synchronized
 			isCompiling_ = true;
 		foreach(subp; codeUnitNames()) {
 			auto got = execute(["dub", "build", "deps:" ~ subp, "--root=" ~ (Path(pathOfFiles) ~ Path(config.dependencyDir)).toNativeString(), "--force"]);
 			logInfo(got.output);
 		}
 		synchronized
-			isCompiling_ = false;
+			isCompiling_ = false;*/
 	}
 }
 
