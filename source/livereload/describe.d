@@ -33,6 +33,7 @@ Dependency[] getDependencyData(string dubDescription) {
 	return dependencies;
 }
 unittest {
+	// example source library
 	Dependency[] dependencies = getDependencyData(
 		"{
 			\"mainPackage\": \"example\",
@@ -98,7 +99,84 @@ unittest {
 			]
 		}
 	");
-	assert(dependencies == [Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"])]);
+	Dependency test = Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
+	assert(dependencies[0].copyFiles == test.copyFiles);
+	assert(dependencies[0].libs == test.libs);
+	assert(dependencies[0].importPaths == test.importPaths);
+	assert(dependencies[0].files == test.files);
+	assert(dependencies[0].versions == test.versions);
+	// non source library
+	Dependency[] nonSourceDependencies = getDependencyData(
+		"{
+			\"mainPackage\": \"example\",
+			\"packages\": [
+				{
+					\"workingDirectory\": \"\",
+					\"copyright\": \"\",
+					\"versions\": [
+						\"example\"
+					],
+					\"targetFileName\": \"\",
+					\"dependencies\": [],
+					\"version\": \"~master\",
+					\"debugVersions\": [],
+					\"postGenerateCommands\": [],
+					\"libs\": [
+						\"example\",
+						\"real\"
+					],
+					\"targetName\": \"example\",
+					\"lflags\": [],
+					\"name\": \"example\",
+					\"importPaths\": [
+						\"source/\"
+					],
+					\"homepage\": \"https://example.com\",
+					\"authors\": [
+						\"\"
+					],
+					\"preGenerateCommands\": [],
+					\"buildRequirements\": [],
+					\"postBuildCommands\": [],
+					\"targetType\": \"library\",
+					\"mainSourceFile\": \"\",
+					\"copyFiles\": [
+						\"file\",
+						\"anotherFile\"
+					],
+					\"preBuildCommands\": [],
+					\"targetPath\": \"\",
+					\"dflags\": [],
+					\"license\": \"public domain\",
+					\"path\": \"/home/example/projects/example\",
+					\"description\": \"A fantastic example program\",
+					\"options\": [],
+					\"stringImportPaths\": [],
+					\"files\": [
+						{
+							\"path\": \"source/example/example.d\",
+							\"type\": \"source\"
+						}
+					]
+				}
+			],
+			\"configuration\": \"library\",
+			\"compiler\": \"dmd\",
+			\"architecture\": [
+				\"x86_64\"
+			],
+			\"platform\": [
+				\"linux\",
+				\"posix\"
+			]
+		}
+	");
+	Dependency nonSourceTest = Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
+	assert(nonSourceDependencies[0].copyFiles == nonSourceTest.copyFiles);
+	assert(nonSourceDependencies[0].libs == nonSourceTest.libs);
+	assert(nonSourceDependencies[0].importPaths == nonSourceTest.importPaths);
+	assert(nonSourceDependencies[0].files == nonSourceTest.files);
+	assert(nonSourceDependencies[0].versions == nonSourceTest.versions);
 }
 string[] getArrayContents(Json json, string value) {
 	string[] contents;
