@@ -32,6 +32,74 @@ Dependency[] getDependencyData(string dubDescription) {
 
 	return dependencies;
 }
+unittest {
+	Dependency[] dependencies = getDependencyData(
+		"{
+			\"mainPackage\": \"example\",
+			\"packages\": [
+				{
+					\"workingDirectory\": \"\",
+					\"copyright\": \"\",
+					\"versions\": [
+						\"example\"
+					],
+					\"targetFileName\": \"\",
+					\"dependencies\": [],
+					\"version\": \"~master\",
+					\"debugVersions\": [],
+					\"postGenerateCommands\": [],
+					\"libs\": [
+						\"example\",
+						\"real\"
+					],
+					\"targetName\": \"example\",
+					\"lflags\": [],
+					\"name\": \"example\",
+					\"importPaths\": [
+						\"source/\"
+					],
+					\"homepage\": \"https://example.com\",
+					\"authors\": [
+						\"\"
+					],
+					\"preGenerateCommands\": [],
+					\"buildRequirements\": [],
+					\"postBuildCommands\": [],
+					\"targetType\": \"sourceLibrary\",
+					\"mainSourceFile\": \"\",
+					\"copyFiles\": [
+						\"file\",
+						\"anotherFile\"
+					],
+					\"preBuildCommands\": [],
+					\"targetPath\": \"\",
+					\"dflags\": [],
+					\"license\": \"public domain\",
+					\"path\": \"/home/example/projects/example\",
+					\"description\": \"A fantastic example program\",
+					\"options\": [],
+					\"stringImportPaths\": [],
+					\"files\": [
+						{
+							\"path\": \"source/example/example.d\",
+							\"type\": \"source\"
+						}
+					]
+				}
+			],
+			\"configuration\": \"library\",
+			\"compiler\": \"dmd\",
+			\"architecture\": [
+				\"x86_64\"
+			],
+			\"platform\": [
+				\"linux\",
+				\"posix\"
+			]
+		}
+	");
+	assert(dependencies == [Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"])]);
+}
 string[] getArrayContents(Json json, string value) {
 	string[] contents;
 	foreach (size_t i, Json v; json[value]) {
