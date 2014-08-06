@@ -8,7 +8,7 @@ import std.process, std.stdio;
 import vibe.data.json;
 
 struct DubDescribe {
-	string[] copyFiles, libs, importPaths, files, versions;
+    string[] copyFiles, libs, importPaths, files, versions;
 }
 
 /**
@@ -25,189 +25,189 @@ struct DubDescribe {
  */
 DubDescribe[] getDependencyData(string dubDescription) {
     DubDescribe[] dependencies;
-	Json json = parseJsonString(dubDescription);
+    Json json = parseJsonString(dubDescription);
 
-	json = json["packages"];
+    json = json["packages"];
 
-	foreach (size_t index, Json value; json) {
+    foreach (size_t index, Json value; json) {
         string path = value["path"].get!string;
         DubDescribe d;
 
-		d.versions = getArrayContents(value, "versions");
+        d.versions = getArrayContents(value, "versions");
 
         foreach(libPath; getArrayContents(value, "libs"))
             d.libs ~= normalizePath(path, libPath);
         foreach(cFile; getArrayContents(value, "copyFiles"))
             d.copyFiles ~= normalizePath(path, cFile);
 
-		if (value["targetType"].get!string != "sourceLibrary")
+        if (value["targetType"].get!string != "sourceLibrary")
             foreach(iPath; getArrayContents(value, "importPaths"))
                 d.importPaths ~= normalizePath(path, iPath);
-		else
-			foreach(size_t i, Json v; value["files"])
-				d.files ~= normalizePath(path, v["path"].get!string);
+        else
+            foreach(size_t i, Json v; value["files"])
+                d.files ~= normalizePath(path, v["path"].get!string);
 
-		dependencies ~= d;
-	}
+        dependencies ~= d;
+    }
 
-	return dependencies;
+    return dependencies;
 }
 
 unittest {
-	// example source library
+    // example source library
     DubDescribe[] dependencies = getDependencyData(
-		"{
-			\"mainPackage\": \"example\",
-			\"packages\": [
-				{
-					\"workingDirectory\": \"\",
-					\"copyright\": \"\",
-					\"versions\": [
-						\"example\"
-					],
-					\"targetFileName\": \"\",
-					\"dependencies\": [],
-					\"version\": \"~master\",
-					\"debugVersions\": [],
-					\"postGenerateCommands\": [],
-					\"libs\": [
-						\"example\",
-						\"real\"
-					],
-					\"targetName\": \"example\",
-					\"lflags\": [],
-					\"name\": \"example\",
-					\"importPaths\": [
-						\"source/\"
-					],
-					\"homepage\": \"https://example.com\",
-					\"authors\": [
-						\"\"
-					],
-					\"preGenerateCommands\": [],
-					\"buildRequirements\": [],
-					\"postBuildCommands\": [],
-					\"targetType\": \"sourceLibrary\",
-					\"mainSourceFile\": \"\",
-					\"copyFiles\": [
-						\"file\",
-						\"anotherFile\"
-					],
-					\"preBuildCommands\": [],
-					\"targetPath\": \"\",
-					\"dflags\": [],
-					\"license\": \"public domain\",
-					\"path\": \"/home/example/projects/example\",
-					\"description\": \"A fantastic example program\",
-					\"options\": [],
-					\"stringImportPaths\": [],
-					\"files\": [
-						{
-							\"path\": \"source/example/example.d\",
-							\"type\": \"source\"
-						}
-					]
-				}
-			],
-			\"configuration\": \"library\",
-			\"compiler\": \"dmd\",
-			\"architecture\": [
-				\"x86_64\"
-			],
-			\"platform\": [
-				\"linux\",
-				\"posix\"
-			]
-		}
-	");
+        "{
+            \"mainPackage\": \"example\",
+            \"packages\": [
+                {
+                    \"workingDirectory\": \"\",
+                    \"copyright\": \"\",
+                    \"versions\": [
+                        \"example\"
+                    ],
+                    \"targetFileName\": \"\",
+                    \"dependencies\": [],
+                    \"version\": \"~master\",
+                    \"debugVersions\": [],
+                    \"postGenerateCommands\": [],
+                    \"libs\": [
+                        \"example\",
+                        \"real\"
+                    ],
+                    \"targetName\": \"example\",
+                    \"lflags\": [],
+                    \"name\": \"example\",
+                    \"importPaths\": [
+                        \"source/\"
+                    ],
+                    \"homepage\": \"https://example.com\",
+                    \"authors\": [
+                        \"\"
+                    ],
+                    \"preGenerateCommands\": [],
+                    \"buildRequirements\": [],
+                    \"postBuildCommands\": [],
+                    \"targetType\": \"sourceLibrary\",
+                    \"mainSourceFile\": \"\",
+                    \"copyFiles\": [
+                        \"file\",
+                        \"anotherFile\"
+                    ],
+                    \"preBuildCommands\": [],
+                    \"targetPath\": \"\",
+                    \"dflags\": [],
+                    \"license\": \"public domain\",
+                    \"path\": \"/home/example/projects/example\",
+                    \"description\": \"A fantastic example program\",
+                    \"options\": [],
+                    \"stringImportPaths\": [],
+                    \"files\": [
+                        {
+                            \"path\": \"source/example/example.d\",
+                            \"type\": \"source\"
+                        }
+                    ]
+                }
+            ],
+            \"configuration\": \"library\",
+            \"compiler\": \"dmd\",
+            \"architecture\": [
+                \"x86_64\"
+            ],
+            \"platform\": [
+                \"linux\",
+                \"posix\"
+            ]
+        }
+    ");
 
-	// Expected output to test: Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
-	assert(dependencies[0].copyFiles.length == 2);
+    // Expected output to test: Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
+    assert(dependencies[0].copyFiles.length == 2);
     assert(dependencies[0].copyFiles[0] == "/home/example/projects/example/file");
     assert(dependencies[0].copyFiles[1] == "/home/example/projects/example/anotherFile");
 
-	assert(dependencies[0].libs.length == 2);
+    assert(dependencies[0].libs.length == 2);
     assert(dependencies[0].libs[0] == "/home/example/projects/example/example");
     assert(dependencies[0].libs[1] == "/home/example/projects/example/real");
 
-	assert(dependencies[0].importPaths.length == 0);
+    assert(dependencies[0].importPaths.length == 0);
 
-	assert(dependencies[0].files.length == 1);
+    assert(dependencies[0].files.length == 1);
     assert(dependencies[0].files[0] == "/home/example/projects/example/source/example/example.d");
 
-	assert(dependencies[0].versions.length == 1);
-	assert(dependencies[0].versions[0] == "example");
+    assert(dependencies[0].versions.length == 1);
+    assert(dependencies[0].versions[0] == "example");
 }
 
 unittest {
-	// non source library
+    // non source library
     DubDescribe[] nonSourceDependencies = getDependencyData(
-		"{
-			\"mainPackage\": \"example\",
-			\"packages\": [
-				{
-					\"workingDirectory\": \"\",
-					\"copyright\": \"\",
-					\"versions\": [
-						\"example\"
-					],
-					\"targetFileName\": \"\",
-					\"dependencies\": [],
-					\"version\": \"~master\",
-					\"debugVersions\": [],
-					\"postGenerateCommands\": [],
-					\"libs\": [
-						\"example\",
-						\"real\"
-					],
-					\"targetName\": \"example\",
-					\"lflags\": [],
-					\"name\": \"example\",
-					\"importPaths\": [
-						\"source/\"
-					],
-					\"homepage\": \"https://example.com\",
-					\"authors\": [
-						\"\"
-					],
-					\"preGenerateCommands\": [],
-					\"buildRequirements\": [],
-					\"postBuildCommands\": [],
-					\"targetType\": \"library\",
-					\"mainSourceFile\": \"\",
-					\"copyFiles\": [
-						\"file\",
-						\"anotherFile\"
-					],
-					\"preBuildCommands\": [],
-					\"targetPath\": \"\",
-					\"dflags\": [],
-					\"license\": \"public domain\",
-					\"path\": \"/home/example/projects/example\",
-					\"description\": \"A fantastic example program\",
-					\"options\": [],
-					\"stringImportPaths\": [],
-					\"files\": [
-						{
-							\"path\": \"source/example/example.d\",
-							\"type\": \"source\"
-						}
-					]
-				}
-			],
-			\"configuration\": \"library\",
-			\"compiler\": \"dmd\",
-			\"architecture\": [
-				\"x86_64\"
-			],
-			\"platform\": [
-				\"linux\",
-				\"posix\"
-			]
-		}
-	");
+        "{
+            \"mainPackage\": \"example\",
+            \"packages\": [
+                {
+                    \"workingDirectory\": \"\",
+                    \"copyright\": \"\",
+                    \"versions\": [
+                        \"example\"
+                    ],
+                    \"targetFileName\": \"\",
+                    \"dependencies\": [],
+                    \"version\": \"~master\",
+                    \"debugVersions\": [],
+                    \"postGenerateCommands\": [],
+                    \"libs\": [
+                        \"example\",
+                        \"real\"
+                    ],
+                    \"targetName\": \"example\",
+                    \"lflags\": [],
+                    \"name\": \"example\",
+                    \"importPaths\": [
+                        \"source/\"
+                    ],
+                    \"homepage\": \"https://example.com\",
+                    \"authors\": [
+                        \"\"
+                    ],
+                    \"preGenerateCommands\": [],
+                    \"buildRequirements\": [],
+                    \"postBuildCommands\": [],
+                    \"targetType\": \"library\",
+                    \"mainSourceFile\": \"\",
+                    \"copyFiles\": [
+                        \"file\",
+                        \"anotherFile\"
+                    ],
+                    \"preBuildCommands\": [],
+                    \"targetPath\": \"\",
+                    \"dflags\": [],
+                    \"license\": \"public domain\",
+                    \"path\": \"/home/example/projects/example\",
+                    \"description\": \"A fantastic example program\",
+                    \"options\": [],
+                    \"stringImportPaths\": [],
+                    \"files\": [
+                        {
+                            \"path\": \"source/example/example.d\",
+                            \"type\": \"source\"
+                        }
+                    ]
+                }
+            ],
+            \"configuration\": \"library\",
+            \"compiler\": \"dmd\",
+            \"architecture\": [
+                \"x86_64\"
+            ],
+            \"platform\": [
+                \"linux\",
+                \"posix\"
+            ]
+        }
+    ");
 
-	// Expected output to be: Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
+    // Expected output to be: Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
     assert(nonSourceDependencies[0].copyFiles.length == 2);
     assert(nonSourceDependencies[0].copyFiles[0] == "/home/example/projects/example/file");
     assert(nonSourceDependencies[0].copyFiles[1] == "/home/example/projects/example/anotherFile");
@@ -239,15 +239,15 @@ unittest {
  *      Json
  */
 string[] getArrayContents(Json json, string value) {
-	string[] contents;
+    string[] contents;
 
     if (json.length > 0 && json.type == Json.Type.object) {
-    	foreach (size_t i, Json v; json[value]) {
-		    contents ~= v.get!string;
-	    }
+        foreach (size_t i, Json v; json[value]) {
+            contents ~= v.get!string;
+        }
     }
 
-	return contents;
+    return contents;
 }
 
 string normalizePath(string toFiles, string file) {
