@@ -103,12 +103,16 @@ unittest {
 	assert(dependencies[0].copyFiles.length == 2);
 	assert(dependencies[0].copyFiles[0] == "file");
 	assert(dependencies[0].copyFiles[1] == "anotherFile");
+
 	assert(dependencies[0].libs.length == 2);
 	assert(dependencies[0].libs[0] == "example");
 	assert(dependencies[0].libs[1] == "real");
+
 	assert(dependencies[0].importPaths.length == 0);
+
 	assert(dependencies[0].files.length == 1);
 	assert(dependencies[0].files[0] == "source/example/example.d");
+
 	assert(dependencies[0].versions.length == 1);
 	assert(dependencies[0].versions[0] == "example");
 	// non source library
@@ -181,12 +185,16 @@ unittest {
 	assert(nonSourceDependencies[0].copyFiles.length == 2);
 	assert(nonSourceDependencies[0].copyFiles[0] == "file");
 	assert(nonSourceDependencies[0].copyFiles[1] == "anotherFile");
+
 	assert(nonSourceDependencies[0].libs.length == 2);
 	assert(nonSourceDependencies[0].libs[0] == "example");
 	assert(nonSourceDependencies[0].libs[1] == "real");
 	assert(nonSourceDependencies[0].importPaths.length == 1);
+
 	assert(nonSourceDependencies[0].importPaths[0] == "source/");
+
 	assert(nonSourceDependencies[0].files.length == 0);
+	
 	assert(nonSourceDependencies[0].versions.length == 1);
 	assert(nonSourceDependencies[0].versions[0] == "example");
 }
