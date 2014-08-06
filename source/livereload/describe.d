@@ -40,7 +40,6 @@ DubDescribe[] getDependencyData(string dubDescription) {
         foreach(cFile; getArrayContents(value, "copyFiles"))
             d.copyFiles ~= normalizePath(path, cFile);
 
-
 		if (value["targetType"].get!string != "sourceLibrary")
             foreach(iPath; getArrayContents(value, "importPaths"))
                 d.importPaths ~= normalizePath(path, iPath);

@@ -127,6 +127,7 @@ mixin template ToolChain() {
 
 		synchronized
 			isCompiling_ = true;
+
 		foreach(subp; codeUnitNames()) {
 			auto got = execute(["dub", "describe", "deps:" ~ subp]);
             auto data = getDependencyData(got.output);
