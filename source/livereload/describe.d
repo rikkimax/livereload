@@ -6,19 +6,34 @@
 module livereload.describe;
 import std.process, std.stdio;
 import vibe.data.json;
-struct Dependency {
+
+struct DubDescribe {
 	string[] copyFiles, libs, importPaths, files, versions;
 }
-Dependency[] getDependencyData(string dubDescription) {
-	Dependency[] dependencies;
+
+/**
+ * Parses output from dub for dependency management
+ * 
+ * Params:
+ *      dubDescription  =   The output from dub describe
+ * 
+ * Returns:
+ *      A set of values representing the dependency
+ * 
+ * See_Also:
+ *      DubDescribe
+ */
+DubDescribe[] getDependencyData(string dubDescription) {
+    DubDescribe[] dependencies;
 	Json json = parseJsonString(dubDescription);
 
 	json = json["packages"];
 
 	foreach (size_t index, Json value; json) {
-		Dependency d;
+        DubDescribe d;
 		d.versions = getArrayContents(value, "versions");
 		d.libs = getArrayContents(value, "libs");
+
 		if (value["targetType"].get!string != "sourceLibrary") {
 			d.importPaths = getArrayContents(value, "importPaths");
 		} else {
@@ -26,15 +41,17 @@ Dependency[] getDependencyData(string dubDescription) {
 				d.files ~= v["path"].get!string;
 			}
 		}
+
 		d.copyFiles = getArrayContents(value, "copyFiles");
 		dependencies ~= d;
 	}
 
 	return dependencies;
 }
+
 unittest {
 	// example source library
-	Dependency[] dependencies = getDependencyData(
+    DubDescribe[] dependencies = getDependencyData(
 		"{
 			\"mainPackage\": \"example\",
 			\"packages\": [
@@ -99,6 +116,7 @@ unittest {
 			]
 		}
 	");
+
 	// Expected output to test: Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
 	assert(dependencies[0].copyFiles.length == 2);
 	assert(dependencies[0].copyFiles[0] == "file");
@@ -115,8 +133,11 @@ unittest {
 
 	assert(dependencies[0].versions.length == 1);
 	assert(dependencies[0].versions[0] == "example");
+}
+
+unittest {
 	// non source library
-	Dependency[] nonSourceDependencies = getDependencyData(
+    DubDescribe[] nonSourceDependencies = getDependencyData(
 		"{
 			\"mainPackage\": \"example\",
 			\"packages\": [
@@ -181,6 +202,7 @@ unittest {
 			]
 		}
 	");
+
 	// Expected output to be: Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
 	assert(nonSourceDependencies[0].copyFiles.length == 2);
 	assert(nonSourceDependencies[0].copyFiles[0] == "file");
@@ -198,10 +220,28 @@ unittest {
 	assert(nonSourceDependencies[0].versions.length == 1);
 	assert(nonSourceDependencies[0].versions[0] == "example");
 }
+
+/**
+ * Gets an array of values from a Json value
+ * 
+ * Params:
+ *      json    =   The json set to get from
+ *      value   =   The name of the array of values
+ * 
+ * Returns:
+ *      A string array based upon the name within the json set.
+ * 
+ * See_Also:
+ *      Json
+ */
 string[] getArrayContents(Json json, string value) {
 	string[] contents;
-	foreach (size_t i, Json v; json[value]) {
-		contents ~= v.get!string;
-	}
+
+    if (json.length > 0 && json.type == Json.Type.object) {
+    	foreach (size_t i, Json v; json[value]) {
+		    contents ~= v.get!string;
+	    }
+    }
+
 	return contents;
 }
