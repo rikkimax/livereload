@@ -54,18 +54,6 @@ private {
 			cmd ~= "64";
 		else
 			cmd ~= "32";
-		
-		cmd ~= " -I" ~ buildPath(pathOfFiles, "deps", "imports", unitName);
-		// TODO: will it always be a .lib?
-
-		string libFile;
-		version(x86_64) {
-			liveFile = buildPath(pathOfFiles, "deps", "bin", unitName ~ "x86_64.lib");
-		} else version(x86) {
-			liveFile = buildPath(pathOfFiles, "deps", "bin", unitName ~ "x86.lib");
-		}
-		if (exists(libFile))
-			cmd ~= " " ~ libFile;
 
 		foreach(dep; dependencyDirs) {
 			cmd ~= " -I" ~ dep;
@@ -88,24 +76,30 @@ private {
 				cmd ~= " " ~ buildPath(pathOfFiles, file);
 			}
 		}
+
+        version(Windows) {
+            cmd = cmd.replace("/", "\\");
+        } else { // posix
+            cmd = cmd.replace("\\", "/");
+        }
 		
 		return cmd;
 	}
 
 	unittest {
-		string cmd = dmdCompileCommand("testdir", "dmd", LiveReloadConfig("bin"), "test.exe", ["dir/file.d"], ["SomeVersion"], "my_code_unit", null, null);
+        string cmd = dmdCompileCommand("testdir", "dmd", LiveReloadConfig("bin", "deps"), "test.exe", ["dir/file.d"], ["SomeVersion"], "my_code_unit", ["testdir/deps/imports/my_code_unit"], null);
 
 		version(Windows) {
 			version(x86_64) {
-				assert(cmd == "dmd -oftestdir\\bin\\test.exe -m64 -Itestdir\\deps\\imports\\my_code_unit testdir\\bin\\my_code_unit.lib -version=SomeVersion testdir\\dir\\file.d");
+				assert(cmd == "dmd -oftestdir\\bin\\test.exe -m64 -Itestdir\\deps\\imports\\my_code_unit -version=SomeVersion testdir\\dir\\file.d");
 			} else {
-				assert(cmd == "dmd -oftestdir\\bin\\test.exe -m32 -Itestdir\\deps\\imports\\my_code_unit testdir\\bin\\my_code_unit.lib -version=SomeVersion testdir\\dir\\file.d");
+				assert(cmd == "dmd -oftestdir\\bin\\test.exe -m32 -Itestdir\\deps\\imports\\my_code_unit -version=SomeVersion testdir\\dir\\file.d");
 			}
 		} else version(Posix) {
 			version(x86_64) {
-				assert(cmd == "dmd -oftestdir/bin/test -m64 -Itestdir/deps/imports/my_code_unit testdir/bin/my_code_unit.lib -version=SomeVersion testdir/dir/file.d");
+                assert(cmd == "dmd -oftestdir/bin/test.exe -m64 -Itestdir/deps/imports/my_code_unit -version=SomeVersion testdir/dir/file.d");
 			} else {
-				assert(cmd == "dmd -oftestdir/bin/test -m32 -Itestdir/deps/imports/my_code_unit testdir/bin/my_code_unit.lib -version=SomeVersion testdir/dir/file.d");
+                assert(cmd == "dmd -oftestdir/bin/test.exe -m32 -Itestdir/deps/imports/my_code_unit -version=SomeVersion testdir/dir/file.d");
 			}
 		}
 	}
