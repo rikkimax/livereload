@@ -99,12 +99,18 @@ unittest {
 			]
 		}
 	");
-	Dependency test = Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
-	assert(dependencies[0].copyFiles == test.copyFiles);
-	assert(dependencies[0].libs == test.libs);
-	assert(dependencies[0].importPaths == test.importPaths);
-	assert(dependencies[0].files == test.files);
-	assert(dependencies[0].versions == test.versions);
+	// Expected output to test: Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
+	assert(dependencies[0].copyFiles.length == 2);
+	assert(dependencies[0].copyFiles[0] == "file");
+	assert(dependencies[0].copyFiles[1] == "anotherFile");
+	assert(dependencies[0].libs.length == 2);
+	assert(dependencies[0].libs[0] == "example");
+	assert(dependencies[0].libs[1] == "real");
+	assert(dependencies[0].importPaths.length == 0);
+	assert(dependencies[0].files.length == 1);
+	assert(dependencies[0].files[0] == "source/example/example.d");
+	assert(dependencies[0].versions.length == 1);
+	assert(dependencies[0].versions[0] == "example");
 	// non source library
 	Dependency[] nonSourceDependencies = getDependencyData(
 		"{
@@ -171,12 +177,18 @@ unittest {
 			]
 		}
 	");
-	Dependency nonSourceTest = Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
-	assert(nonSourceDependencies[0].copyFiles == nonSourceTest.copyFiles);
-	assert(nonSourceDependencies[0].libs == nonSourceTest.libs);
-	assert(nonSourceDependencies[0].importPaths == nonSourceTest.importPaths);
-	assert(nonSourceDependencies[0].files == nonSourceTest.files);
-	assert(nonSourceDependencies[0].versions == nonSourceTest.versions);
+	// Expected output to be: Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
+	assert(nonSourceDependencies[0].copyFiles.length == 2);
+	assert(nonSourceDependencies[0].copyFiles[0] == "file");
+	assert(nonSourceDependencies[0].copyFiles[1] == "anotherFile");
+	assert(nonSourceDependencies[0].libs.length == 2);
+	assert(nonSourceDependencies[0].libs[0] == "example");
+	assert(nonSourceDependencies[0].libs[1] == "real");
+	assert(nonSourceDependencies[0].importPaths.length == 1);
+	assert(nonSourceDependencies[0].importPaths[0] == "source/");
+	assert(nonSourceDependencies[0].files.length == 0);
+	assert(nonSourceDependencies[0].versions.length == 1);
+	assert(nonSourceDependencies[0].versions[0] == "example");
 }
 string[] getArrayContents(Json json, string value) {
 	string[] contents;
