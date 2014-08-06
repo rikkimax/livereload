@@ -30,19 +30,24 @@ DubDescribe[] getDependencyData(string dubDescription) {
 	json = json["packages"];
 
 	foreach (size_t index, Json value; json) {
+        string path = value["path"].get!string;
         DubDescribe d;
+
 		d.versions = getArrayContents(value, "versions");
-		d.libs = getArrayContents(value, "libs");
 
-		if (value["targetType"].get!string != "sourceLibrary") {
-			d.importPaths = getArrayContents(value, "importPaths");
-		} else {
-			foreach (size_t i, Json v; value["files"]) {
-				d.files ~= v["path"].get!string;
-			}
-		}
+        foreach(libPath; getArrayContents(value, "libs"))
+            d.libs ~= normalizePath(path, libPath);
+        foreach(cFile; getArrayContents(value, "copyFiles"))
+            d.copyFiles ~= normalizePath(path, cFile);
 
-		d.copyFiles = getArrayContents(value, "copyFiles");
+
+		if (value["targetType"].get!string != "sourceLibrary")
+            foreach(iPath; getArrayContents(value, "importPaths"))
+                d.importPaths ~= normalizePath(path, iPath);
+		else
+			foreach(size_t i, Json v; value["files"])
+				d.files ~= normalizePath(path, v["path"].get!string);
+
 		dependencies ~= d;
 	}
 
@@ -119,17 +124,17 @@ unittest {
 
 	// Expected output to test: Dependency(["file", "anotherFile"], ["example", "real"], [], ["source/example/example.d"], ["example"]);
 	assert(dependencies[0].copyFiles.length == 2);
-	assert(dependencies[0].copyFiles[0] == "file");
-	assert(dependencies[0].copyFiles[1] == "anotherFile");
+    assert(dependencies[0].copyFiles[0] == "/home/example/projects/example/file");
+    assert(dependencies[0].copyFiles[1] == "/home/example/projects/example/anotherFile");
 
 	assert(dependencies[0].libs.length == 2);
-	assert(dependencies[0].libs[0] == "example");
-	assert(dependencies[0].libs[1] == "real");
+    assert(dependencies[0].libs[0] == "/home/example/projects/example/example");
+    assert(dependencies[0].libs[1] == "/home/example/projects/example/real");
 
 	assert(dependencies[0].importPaths.length == 0);
 
 	assert(dependencies[0].files.length == 1);
-	assert(dependencies[0].files[0] == "source/example/example.d");
+    assert(dependencies[0].files[0] == "/home/example/projects/example/source/example/example.d");
 
 	assert(dependencies[0].versions.length == 1);
 	assert(dependencies[0].versions[0] == "example");
@@ -204,21 +209,21 @@ unittest {
 	");
 
 	// Expected output to be: Dependency(["file", "anotherFile"], ["example", "real"], ["source/"], [], ["example"]);
-	assert(nonSourceDependencies[0].copyFiles.length == 2);
-	assert(nonSourceDependencies[0].copyFiles[0] == "file");
-	assert(nonSourceDependencies[0].copyFiles[1] == "anotherFile");
+    assert(nonSourceDependencies[0].copyFiles.length == 2);
+    assert(nonSourceDependencies[0].copyFiles[0] == "/home/example/projects/example/file");
+    assert(nonSourceDependencies[0].copyFiles[1] == "/home/example/projects/example/anotherFile");
+    
+    assert(nonSourceDependencies[0].libs.length == 2);
+    assert(nonSourceDependencies[0].libs[0] == "/home/example/projects/example/example");
+    assert(nonSourceDependencies[0].libs[1] == "/home/example/projects/example/real");
+    
+    assert(nonSourceDependencies[0].importPaths.length == 1);
+    assert(nonSourceDependencies[0].importPaths[0] == "/home/example/projects/example/source/");
+    
+    assert(nonSourceDependencies[0].files.length == 0);
 
-	assert(nonSourceDependencies[0].libs.length == 2);
-	assert(nonSourceDependencies[0].libs[0] == "example");
-	assert(nonSourceDependencies[0].libs[1] == "real");
-	assert(nonSourceDependencies[0].importPaths.length == 1);
-
-	assert(nonSourceDependencies[0].importPaths[0] == "source/");
-
-	assert(nonSourceDependencies[0].files.length == 0);
-	
-	assert(nonSourceDependencies[0].versions.length == 1);
-	assert(nonSourceDependencies[0].versions[0] == "example");
+    assert(nonSourceDependencies[0].versions.length == 1);
+    assert(nonSourceDependencies[0].versions[0] == "example");
 }
 
 /**
@@ -244,4 +249,22 @@ string[] getArrayContents(Json json, string value) {
     }
 
 	return contents;
+}
+
+string normalizePath(string toFiles, string file) {
+    import vibe.inet.path;
+
+    auto mypath = Path(file);
+    if (!mypath.absolute) {
+        mypath = Path(toFiles) ~ mypath;
+        mypath.normalize();
+    }
+    
+    return mypath.toString();
+}
+
+unittest {
+    assert(normalizePath("/something", "nothing") == "/something/nothing");
+    assert(normalizePath("/something", "../nothing") == "/nothing");
+    assert(normalizePath("/something", ".") == "/something");
 }
