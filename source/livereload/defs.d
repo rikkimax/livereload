@@ -5,6 +5,10 @@ import livereload.config.defs;
  * Interfaces
  */
 
+struct DubDescribe {
+    string[] copyFiles, libs, importPaths, files, versions;
+}
+
 interface ILiveReload {
 	/**
 	 * Creates and runs threads
@@ -69,6 +73,8 @@ interface ILiveReload {
 
 	bool checkToolchain();
 	void rerunDubDependencies();
+    DubDescribe dependencyForCodeUnit(string name);
+
 	void executeCodeUnit(string name, string file);
 	void stopCodeUnit(string name, string file);
 	bool isCodeUnitADirectory(string name);
@@ -109,28 +115,15 @@ interface ILiveReload {
 	string lastNameOfPath(string name, string file);
 }
 
-interface ICompilationHandler {
-	bool compileExecutable(ILiveReload reload, string binFile, string[] files, string[] versions, string[] dependencyDirs, string[] strImports, string codeUnitName);
-	bool canHandle(string compiler);
-}
-
 /**
  * InternalAPI
  */
-
-private shared {
-	ICompilationHandler[] compilationHelpers;
-}
-
-void registerCompilationHandler(ICompilationHandler handler) {
-	compilationHelpers ~= cast(shared)handler;
-}
 
 /**
  * Base impl
  */
 
-class LiveReload : ILiveReload {
+/*class LiveReload : ILiveReload {
 	private shared {
 		import livereload.impl;
 		import vibe.d;
@@ -199,4 +192,4 @@ class LiveReload : ILiveReload {
 	mixin ChangeHandling; // transforms the changes that occured into code unit names and main files for compilation/running
 	mixin Compilation; // compiles code
 	mixin NodeRunner; // runs code unit files
-}
+}*/

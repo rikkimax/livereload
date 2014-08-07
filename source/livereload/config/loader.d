@@ -26,13 +26,11 @@ unittest {
 unittest {
 	auto t = loadConfig("""
 # live reload config
-dub_dependency_dir: deps
 code_unit: dynamic/routes/.*\\.d
 code_unit: static/
 output_dir: bins
 """[1 .. $-1]);
 
-	assert(t.dependencyDir == "deps");
 	assert(t.outputDir == "bins");
 
 	assert(t.codeUnits.length == 2);
@@ -146,9 +144,7 @@ void parseLines(string[] lines, ref LiveReloadConfig config) {
 		}
 
 		if (lineA.length > 1 && !isDirDependencies) {
-			if (lineA[0].toLower == "dub_dependency_dir:") {
-				config.dependencyDir = stripped[lineA[0].length + 1 .. $];
-			} else if (lineA[0].toLower == "code_unit:") {
+			if (lineA[0].toLower == "code_unit:") {
 				config.codeUnits ~= stripped[lineA[0].length + 1 .. $];
 			} else if (lineA[0].toLower == "output_dir:") {
 				config.outputDir = stripped[lineA[0].length + 1 .. $];

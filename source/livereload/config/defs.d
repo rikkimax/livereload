@@ -4,7 +4,6 @@ public import livereload.config.compileinfo : compileInfoBasedOn;
 
 struct LiveReloadConfig {
 	string outputDir;
-	string dependencyDir;
 	string[] codeUnits;
 	string[][string] dirDependencies;
 	string[][string] outputDependencies;

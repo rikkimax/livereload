@@ -2,6 +2,7 @@
 import livereload.defs;
 
 import vibe.d;
+
 import std.file : getcwd, exists, isFile, read, chdir;
 import std.process : execute, environment;
 import std.path : buildPath;
@@ -11,7 +12,7 @@ shared {
 }
 
 void main(string[] args) {
-	version(Windows) {
+    version(Windows) {
 		if (environment.get("PWD", "") != "") {
 			// most likely e.g. cygwin *grumble*
 			auto value = execute(["cygpath", "-w", environment.get("PWD", "")]);
@@ -60,9 +61,11 @@ void main(string[] args) {
 		return;
 	}
 
-	new LiveReload(pathToFiles, compiler, configFile);
+	//new LiveReload(pathToFiles, compiler, configFile);
 
-	runEventLoop();
+    testfunc(compiler);
+
+	//runEventLoop();
 }
 
 bool testFor(string app) {
@@ -72,4 +75,52 @@ bool testFor(string app) {
 	} catch(Exception e) {
 		return false;
 	}
+}
+
+void testfunc(string compI) {
+    import dub.dub;
+    import dub.project;
+    import dub.compilers.compiler;
+    import dub.package_;
+    import dub.generators.generator;
+    import dub.packagesupplier;
+
+    BuildSettings bs;
+    string[] debugVersions;
+    string[] registry_urls;
+
+    Compiler compiler = getCompiler(compI);
+    BuildPlatform bp = compiler.determinePlatform(bs, compI);
+    bs.addDebugVersions(debugVersions);
+
+    Dub vdub = new Dub();
+    vdub.loadPackageFromCwd();
+
+    auto subp = vdub.packageManager.getFirstPackage(vdub.projectName ~ ":static");
+
+    subp.info.buildSettings.sourceFiles[""] ~= "test.d";
+    subp.info.buildSettings.targetName = "static_test";
+
+    vdub.rootPath = subp.path;
+    vdub.loadPackage(subp);
+
+    logInfo("subpackage name %s", subp.name);
+
+    vdub.upgrade(UpgradeOptions.select);
+    vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly|UpgradeOptions.useCachedResult);
+    vdub.project.validate();
+
+    foreach(o; vdub.packageManager.completeSearchPath) {
+        logInfo(o.toNativeString());
+    }
+    
+    GeneratorSettings gensettings;
+    gensettings.platform = bp;
+    gensettings.config = vdub.project.getDefaultConfiguration(bp);
+    gensettings.compiler = compiler;
+    gensettings.buildType = "debug";
+
+    vdub.generateProject("build", gensettings);
+
+    vdub.shutdown();
 }
