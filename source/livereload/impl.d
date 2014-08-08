@@ -155,7 +155,7 @@ mixin template NodeRunner() {
 
 package {
 	void executeCodeUnit_(shared(LiveReload) this_, string name_, string file_) {
-		/**import std.process;
+		import std.process;
 		import std.string : indexOf;
 		import ofile = std.file;
 
@@ -200,7 +200,7 @@ package {
 			
 			synchronized
 				pidFiles.remove(useName);
-		}**/
+		}
 	}
 }
 
