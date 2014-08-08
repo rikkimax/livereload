@@ -7,7 +7,7 @@ mixin template CodeUnits() {
 	@property {
 		string[] codeUnitNames() {
 			string[] ret;
-			string depPath = buildPath(pathOfFiles, config.dependencyDir, "package.json");
+			string depPath = buildPath(pathOfFiles, "package.json");
 
 			if (exists(depPath) && isFile(depPath)) {
 				Json json = parseJsonString(readText(depPath));
@@ -105,10 +105,6 @@ mixin template CodeUnits() {
 }
 
 mixin template ToolChain() {
-    private {
-        DubDescribe[string] dependencyOfCodeUnits;
-    }
-
 	bool checkToolchain() {
 		import std.process : execute, thisProcessID;
 		import std.file : tempDir, mkdirRecurse, rmdirRecurse;
@@ -127,38 +123,14 @@ mixin template ToolChain() {
 	}
 
 	void rerunDubDependencies() {
-        import livereload.describe : getDependencyData;
-        import std.file : chdir, getcwd;
-        import std.string : indexOf;
-
 		synchronized
 			isCompiling_ = true;
 
-        dependencyOfCodeUnits = null;
-
-        string cdir = getcwd();
-        chdir(config.dependencyDir);
-		foreach(subp; codeUnitNames()) {
-            //string output = execute(["dub""--root=" ~ config.dependencyDir, "describe", "deps:" ~ subp]).output;
-
-            // TODO: workaround for now (in dev mode atleast)
-            auto got = execute(["dub", "run", "dub", "--", "describe", "deps:" ~ subp]);
-            string output = got.output;
-            output = output[output.indexOf("deps:")+5+subp.length .. $];
-            output = output[output.indexOf("deps:")+5+subp.length .. $];
-
-            auto data = getDependencyData(output);
-            dependencyOfCodeUnits[subp] = data;
-        }
-        chdir(cdir);
+        // TODO: get dub setup and configured for each package
 
 		synchronized
 			isCompiling_ = false;
 	}
-
-    DubDescribe dependencyForCodeUnit(string name) {
-        return dependencyOfCodeUnits.get(name, DubDescribe.init);
-    }
 }
 
 mixin template NodeRunner() {
@@ -183,7 +155,7 @@ mixin template NodeRunner() {
 
 package {
 	void executeCodeUnit_(shared(LiveReload) this_, string name_, string file_) {
-		import std.process;
+		/**import std.process;
 		import std.string : indexOf;
 		import ofile = std.file;
 
@@ -228,7 +200,7 @@ package {
 			
 			synchronized
 				pidFiles.remove(useName);
-		}
+		}**/
 	}
 }
 
@@ -331,7 +303,7 @@ mixin template ChangeHandling() {
 			if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
 				if (change.path.startsWith(Path(buildPath(pathOfFiles, config.outputDir))))
 					continue;
-				if (change.path == (Path(buildPath(pathOfFiles, config.dependencyDir, "package.json")))) {
+				if (change.path == (Path(buildPath(pathOfFiles, "package.json")))) {
 					dubDirChanged = true;
 					continue;
 				}
@@ -464,21 +436,6 @@ mixin template Compilation() {
 		files ~= tfiles.keys;
 		tfiles.clear();
 
-		// determines' versions
-		bool[string] usingVersions;
-	F1: foreach(path, versions; config.versionDirs) {
-			auto reg = regex(path);
-			
-			foreach(file2; files) {
-				foreach(match; matchAll(file2, reg)) {
-					foreach(ver; versions) {
-						usingVersions[ver] = true;
-					}
-					continue F1;
-				}
-			}
-		}
-
 		// Dependency dirs to -I
 		bool[string] dependencyDirs;
 		// String import directories to -J
@@ -526,19 +483,20 @@ mixin template Compilation() {
 		ofile.write(bininfopath, binOutFile);
 		files ~= bininfopath;
 
-        auto depCU = dependencyForCodeUnit(name);
+        /*auto depCU = dependencyForCodeUnit(name);
         files ~= depCU.files;
         //files ~= depCU.libs;
         //TODO: files ~= depCU.libs;
 
-        string[] versionsA = usingVersions.keys ~ depCU.versions;
+        string[] versionsA = depCU.versions;
         string[] dependencyDirsA = dependencyDirs.keys ~ depCU.importPaths;
-        string[] strImportsA = strImports.keys /* ~ depCU.strImportPaths*/;
+        string[] strImportsA = strImports.keys /* ~ depCU.strImportPaths*//*;
 
         // TODO: depCU.copyFiles
 
 		// TODO: assuming executable, perhaps shared libraries should be supported?
-        return (cast()compileHandler_).compileExecutable(this, binFile, files, versionsA, dependencyDirsA, strImportsA, name);
+        return (cast()compileHandler_).compileExecutable(this, binFile, files, versionsA, dependencyDirsA, strImportsA, name);*/
+        return false;
 	}
 
 	void handleRecompilationRerun(string name, string file) {

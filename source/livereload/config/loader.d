@@ -78,22 +78,6 @@ grab_dependency_from_output:
 	assert(t.outputDependencies["datamodel"][0] == "dynamic/models/.*");
 }
 
-unittest {
-	auto t = loadConfig("""
-# live reload config
-dir_with_version: LiveReloadDynamicLoad dynamic/.*
-dir_with_version: LiveReloadStaticLoad static/.*
-"""[1 .. $-1]);
-	
-	assert("dynamic/.*" in t.versionDirs);
-	assert(t.versionDirs["dynamic/.*"].length == 1);
-	assert(t.versionDirs["dynamic/.*"][0] == "LiveReloadDynamicLoad");
-	
-	assert("static/.*" in t.versionDirs);
-	assert(t.versionDirs["static/.*"].length == 1);
-	assert(t.versionDirs["static/.*"][0] == "LiveReloadStaticLoad");
-}
-
 void parseLines(string[] lines, ref LiveReloadConfig config) {
 	import std.string : toLower, stripLeft, stripRight, indexOf;
 
@@ -148,12 +132,6 @@ void parseLines(string[] lines, ref LiveReloadConfig config) {
 				config.codeUnits ~= stripped[lineA[0].length + 1 .. $];
 			} else if (lineA[0].toLower == "output_dir:") {
 				config.outputDir = stripped[lineA[0].length + 1 .. $];
-			}
-		}
-
-		if (lineA.length > 2 && !isDirDependencies) {
-			if (lineA[0].toLower == "dir_with_version:") {
-				config.versionDirs[stripped[lineA[0].length + lineA[1].length + 2 .. $]] ~= lineA[1];
 			}
 		}
 	}

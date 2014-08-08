@@ -7,7 +7,6 @@ struct LiveReloadConfig {
 	string[] codeUnits;
 	string[][string] dirDependencies;
 	string[][string] outputDependencies;
-	string[][string] versionDirs;
 }
 
 struct ProgramCompilationDependencies {

@@ -5,10 +5,6 @@ import livereload.config.defs;
  * Interfaces
  */
 
-struct DubDescribe {
-    string[] copyFiles, libs, importPaths, files, versions;
-}
-
 interface ILiveReload {
 	/**
 	 * Creates and runs threads
@@ -73,7 +69,6 @@ interface ILiveReload {
 
 	bool checkToolchain();
 	void rerunDubDependencies();
-    DubDescribe dependencyForCodeUnit(string name);
 
 	void executeCodeUnit(string name, string file);
 	void stopCodeUnit(string name, string file);
@@ -123,7 +118,7 @@ interface ILiveReload {
  * Base impl
  */
 
-/*class LiveReload : ILiveReload {
+class LiveReload : ILiveReload {
 	private shared {
 		import livereload.impl;
 		import vibe.d;
@@ -135,7 +130,6 @@ interface ILiveReload {
 		string compilerPath_;
 		string configFilePath_;
 		LiveReloadConfig config_;
-		ICompilationHandler compileHandler_;
 
 		Task[] tasksToKill;
 
@@ -152,13 +146,6 @@ interface ILiveReload {
 		compilerPath_ = cast(shared)compilerPath;
 		configFilePath_ = cast(shared)configFilePath;
 		config_ = cast(shared)loadConfig(readText(configFilePath));
-
-		foreach(handler; cast(ICompilationHandler[])compilationHelpers) {
-			if (handler.canHandle(compilerPath)) {
-				compileHandler_ = cast(shared)handler;
-				break;
-			}
-		}
 
 		start();
 	}
@@ -192,4 +179,4 @@ interface ILiveReload {
 	mixin ChangeHandling; // transforms the changes that occured into code unit names and main files for compilation/running
 	mixin Compilation; // compiles code
 	mixin NodeRunner; // runs code unit files
-}*/
+}
