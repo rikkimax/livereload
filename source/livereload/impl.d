@@ -105,6 +105,13 @@ mixin template CodeUnits() {
 }
 
 mixin template ToolChain() {
+    private {
+        import dub.package_;
+        import dub.dub;
+        PackageInfo[string] packageToCodeUnit;
+        Dub[string] dubToCodeUnit;
+    }
+
 	bool checkToolchain() {
 		import std.process : execute, thisProcessID;
 		import std.file : tempDir, mkdirRecurse, rmdirRecurse;
@@ -123,10 +130,52 @@ mixin template ToolChain() {
 	}
 
 	void rerunDubDependencies() {
+        import dub.project;
+        import dub.compilers.compiler;
+        import dub.package_;
+        import dub.generators.generator;
+        import dub.packagesupplier;
+
 		synchronized
 			isCompiling_ = true;
 
-        // TODO: get dub setup and configured for each package
+        foreach(str, dub; dubToCodeUnit) {
+            dub.shutdown();
+        }
+
+        packageToCodeUnit = typeof(packageToCodeUnit).init;
+        dubToCodeUnit = typeof(dubToCodeUnit).init;
+
+        BuildSettings bs;
+        string[] debugVersions;
+        
+        Compiler compiler = getCompiler(compilerPath_);
+        BuildPlatform bp = compiler.determinePlatform(bs, compilerPath_);
+        bs.addDebugVersions(debugVersions);
+
+        foreach(subpName; codeUnitNames) {
+            Dub vdub = new Dub();
+            vdub.loadPackageFromCwd();
+
+            Package usePackage = vdub.packageManager.getFirstPackage(vdub.projectName ~ ":" ~ subpName);
+            if (usePackage is null) {
+                usePackage = vdub.packageManager.getFirstPackage(vdub.projectName ~ ":base");
+                if (usePackage is null)
+                    usePackage = vdub.packageManager.getFirstPackage(vdub.projectName);
+            }
+
+            if (usePackage !is null) {
+                packageToCodeUnit[subpName] = PackageInfo();
+                packageToCodeUnit[subpName].parseJson(usePackage.info.toJson(), vdub.projectName);
+
+                vdub.loadPackage(usePackage);
+                dubToCodeUnit[subpName] = vdub;
+
+                vdub.upgrade(UpgradeOptions.select);
+                vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly|UpgradeOptions.useCachedResult);
+                vdub.project.validate();
+            }
+        }
 
 		synchronized
 			isCompiling_ = false;
