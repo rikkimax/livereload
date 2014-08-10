@@ -108,8 +108,14 @@ mixin template ToolChain() {
     private {
         import dub.package_;
         import dub.dub;
+        import dub.compilers.compiler;
+        import dub.generators.generator;
+
         PackageInfo[string] packageToCodeUnit;
+        Package[string] ofPackageToCodeUnit;
         Dub[string] dubToCodeUnit;
+        BuildPlatform buildPlatform;
+        Compiler dubCompiler;
     }
 
 	bool checkToolchain() {
@@ -131,9 +137,6 @@ mixin template ToolChain() {
 
 	void rerunDubDependencies() {
         import dub.project;
-        import dub.compilers.compiler;
-        import dub.package_;
-        import dub.generators.generator;
         import dub.packagesupplier;
 
 		synchronized
@@ -144,13 +147,14 @@ mixin template ToolChain() {
         }
 
         packageToCodeUnit = typeof(packageToCodeUnit).init;
+        ofPackageToCodeUnit = typeof(ofPackageToCodeUnit).init;
         dubToCodeUnit = typeof(dubToCodeUnit).init;
 
         BuildSettings bs;
         string[] debugVersions;
         
-        Compiler compiler = getCompiler(compilerPath_);
-        BuildPlatform bp = compiler.determinePlatform(bs, compilerPath_);
+        dubCompiler = getCompiler(compilerPath_);
+        buildPlatform = dubCompiler.determinePlatform(bs, compilerPath_);
         bs.addDebugVersions(debugVersions);
 
         foreach(subpName; codeUnitNames) {
@@ -167,6 +171,7 @@ mixin template ToolChain() {
             if (usePackage !is null) {
                 packageToCodeUnit[subpName] = PackageInfo();
                 packageToCodeUnit[subpName].parseJson(usePackage.info.toJson(), vdub.projectName);
+                ofPackageToCodeUnit[subpName] = usePackage;
 
                 vdub.loadPackage(usePackage);
                 dubToCodeUnit[subpName] = vdub;
@@ -182,10 +187,46 @@ mixin template ToolChain() {
 	}
 
     bool dubCompile(string cu, string ofile, string[] srcFiles, string[] strImports) {
-        // TODO: dubCompile
         import std.string : join;
+        import std.path : dirName, baseName;
+
         logInfo("Told to compile %s %s [%s] [%s]", cu, ofile, srcFiles.join(", "), strImports.join(", "));
-        return false;
+
+        if (cu !in dubToCodeUnit)
+            cu = "base";
+
+        version(Windows) {
+            if (ofile[$-4 .. $] == ".exe")
+                ofile.length -= 4;
+        }
+
+        bool compiledSuccessfully;
+
+        //
+
+        ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles[""] ~= srcFiles;
+        ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths[""] ~= strImports;
+        ofPackageToCodeUnit[cu].info.buildSettings.targetName = baseName(ofile);
+        ofPackageToCodeUnit[cu].info.buildSettings.targetPath = dirName(buildPath(config_.outputDir, ofile));
+
+        GeneratorSettings gensettings;
+        gensettings.platform = buildPlatform;
+        gensettings.config = dubToCodeUnit[cu].project.getDefaultConfiguration(buildPlatform);
+        gensettings.compiler = dubCompiler;
+        gensettings.buildType = "debug";
+        gensettings.linkCallback = (int ret, string output) {
+            if (ret == 0)
+                compiledSuccessfully = true;
+        };
+        
+        dubToCodeUnit[cu].generateProject("build", gensettings);
+
+        // restore backups of values
+
+        ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles = packageToCodeUnit[cu].buildSettings.sourceFiles.dup;
+        ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths = packageToCodeUnit[cu].buildSettings.stringImportPaths.dup;
+
+        return compiledSuccessfully;
     }
 }
 
@@ -213,6 +254,7 @@ package {
 	void executeCodeUnit_(shared(LiveReload) this_, string name_, string file_) {
 		import std.process;
 		import std.string : indexOf;
+        import std.path : dirName;
 		import ofile = std.file;
 
 		with(cast()this_) {
@@ -220,8 +262,10 @@ package {
 			alias file = file_;
 
 			string useName = name ~ (file is null ? "" : "");
-			string file2 = lastNameOfPath(name, file);
+            string file2 = buildPath(config.outputDir, lastNameOfPath(name, file));
 			
+            logInfo("running file %s", file2);
+
 			if (file2 in pidFiles)
 				stopCodeUnit(name, file);
 			
@@ -230,10 +274,7 @@ package {
 				synchronized
 					pidFiles[useName] = cast(shared)pipes.pid;
 				
-				string logFile = buildPath(pathOfFiles, config.outputDir, "logs", "output", name ~ ".log");
-				ofile.mkdirRecurse(buildPath(pathOfFiles, config.outputDir, "logs", "output"));
-				if(!ofile.exists(logFile))
-					ofile.write(logFile, "");
+				string logFile = buildPath(dirName(file2), "stdout.log");
 
 				// Ehhh something isn't right. pipeProcess pipes are blocking the entire program
 				foreach(line; pipes.stdout.byLine) {
@@ -251,6 +292,7 @@ package {
 				wait(pipes.pid);
 			} catch(Exception e) {
 				// don't worry about it.
+                logInfo(e.toString());
 				logInfo("File %s failed to run, or died during execution", file);
 			}
 			
@@ -557,11 +599,18 @@ mixin template Compilation() {
 	}
 
 	string codeUnitBinaryPath(string name, string file) {
-		import std.path : dirName, baseName;
+		import std.path : dirName, baseName, buildPath;
 		import std.datetime : Clock;
+        import std.file : mkdirRecurse;
 		string useName = name ~ (file is null ? "" : "");
 
 		string ret = name ~ "_" ~ baseName(file) ~ "_" ~ to!string(Path(dirName(file)).length) ~ "_" ~ to!string(Clock.currTime().toUnixTime());
+        mkdirRecurse(buildPath(config_.outputDir, ret));
+        ret = buildPath(ret, "out");
+
+        version(Windows) {
+            ret ~= ".exe";
+        }
 
 		synchronized
 			namesOfCodeUnitsBins[useName] = cast(shared)ret;

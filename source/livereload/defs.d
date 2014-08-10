@@ -69,6 +69,7 @@ interface ILiveReload {
 
 	bool checkToolchain();
 	void rerunDubDependencies();
+    bool dubCompile(string cu, string ofile, string[] srcFiles, string[] strImports);
 
 	void executeCodeUnit(string name, string file);
 	void stopCodeUnit(string name, string file);
