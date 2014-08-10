@@ -10,7 +10,7 @@ LiveReloadConfig loadConfig(string text) {
 	assert(text.length >= LiveReloadConfigHeaderLine.length, "Config file is not the correct syntax");
 	assert(text[0 .. LiveReloadConfigHeaderLine.length].toLower == LiveReloadConfigHeaderLine.toLower, "Config file is not a config file.");
 
-	LiveReloadConfig ret;
+    LiveReloadConfig ret = LiveReloadConfig();
 	parseLines(text.splitLines, ret);
 	return ret;
 }
