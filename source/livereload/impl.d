@@ -180,6 +180,13 @@ mixin template ToolChain() {
 		synchronized
 			isCompiling_ = false;
 	}
+
+    bool dubCompile(string cu, string ofile, string[] srcFiles, string[] strImports) {
+        // TODO: dubCompile
+        import std.string : join;
+        logInfo("Told to compile %s %s [%s] [%s]", cu, ofile, srcFiles.join(", "), strImports.join(", "));
+        return false;
+    }
 }
 
 mixin template NodeRunner() {
@@ -342,6 +349,7 @@ mixin template ChangeHandling() {
 	}
 
 	void changesOccured(DirectoryChange[] changes) {
+        import livereload.util : replace;
 		import std.file : dirEntries, SpanMode;
 		import std.path : globMatch;
 
@@ -357,36 +365,25 @@ mixin template ChangeHandling() {
 					continue;
 				}
 
-				string relPath = change.path.relativeTo(Path(pathOfFiles)).toNativeString();
-				string[] dependentDirectories = dependedUponDirectories(change.path.toNativeString());
+				string relPath = change.path.relativeTo(Path(pathOfFiles)).toNativeString().replace("\\", "/");
+                string[] dependentDirectories = dependedUponDirectories(relPath);
 
-			F1: foreach(unit; config.codeUnits) {
+		         foreach(unit; config.codeUnits) {
 					if (isCodeUnitADirectory(globCodeUnitName(unit))) {
-						if (Path(relPath).startsWith(Path(unit))) {
+						if (globMatch(relPath, unit)) {
 							codeUnitFilesThatChanged[unit] = (bool[string]).init;
 						}
 					} else {
 						foreach(depDir; dependentDirectories) {
-							if (globMatch(relPath, depDir)) {
-								if (depDir == unit) {
-									// all code unit files need to be changed.
-									foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
-										if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
-											codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
-										}
-									}
-								} else {
-									foreach(cue; dirEntries(pathOfFiles, unit, SpanMode.depth)) {
-										if (globMatch(Path(cue).relativeTo(Path(pathOfFiles)).toNativeString(), depDir)) {
-											codeUnitFilesThatChanged[globCodeUnitName(unit)][cue] = true;
-										}
-									}
-								}
-							}
-						}
-
-						if (globMatch(relPath, unit)) {
-							codeUnitFilesThatChanged[globCodeUnitName(unit)][relPath] = true;
+                            if (depDir == unit) {
+                                // good thats what I expect
+                                foreach(cue; dirEntries(pathOfFiles, SpanMode.depth)) {
+                                    string cueRel = Path(cue).relativeTo(Path(pathOfFiles)).toNativeString();
+                                    if (globMatch(cueRel, depDir)) {
+                                        codeUnitFilesThatChanged[globCodeUnitName(unit)][cueRel] = true;
+                                    }
+                                }
+                            }
 						}
 					}
 				}
@@ -398,16 +395,18 @@ mixin template ChangeHandling() {
 		if (dubDirChanged) {
 			rerunDubDependencies();
 
-			// TODO: recompile every code unit available
-			foreach(unit, files; codeUnitFilesThatChanged) {
-				if (isCodeUnitADirectory(globCodeUnitName(unit))) {
-					handleRecompilationRerun(unit, null);
-				} else {
-					foreach(file; files.keys) {
-						handleRecompilationRerun(unit, file);
-					}
-				}
-			}
+            foreach(unit; config.codeUnits) {
+                if (isCodeUnitADirectory(globCodeUnitName(unit))) {
+                    handleRecompilationRerun(unit, null);
+                } else {
+                    foreach(cue; dirEntries(pathOfFiles, SpanMode.depth)) {
+                        string cueRel = Path(cue).relativeTo(Path(pathOfFiles)).toNativeString();
+                        if (globMatch(cueRel, unit)) {
+                            handleRecompilationRerun(globCodeUnitName(unit), cueRel);
+                        }
+                    }
+                }
+            }
 		} else {
 			foreach(unit, files; codeUnitFilesThatChanged) {
 				if (isCodeUnitADirectory(globCodeUnitName(unit))) {
@@ -434,118 +433,119 @@ mixin template ChangeHandling() {
 }
 
 mixin template Compilation() {
+    private shared {
+        string[string] namesOfCodeUnitsBins;
+    }
+
 	bool compileCodeUnit(string name, string file) {
-		import std.regex : regex, matchAll;
-		import std.path : dirName;
+		import std.path : dirName, globMatch;
 		import std.string : indexOf;
 		import std.file : dirEntries, SpanMode;
 		import ofile = std.file;
 		import std.datetime : Clock;
 
-		string bininfopath = (Path(pathOfFiles) ~ Path(config.outputDir) ~ Path("bininfo.d")).toNativeString();
-		string binOutFile = "module livereload.bininfo;\r\n";
+        string[] files;
+        string[] strImports;
+        string[] binInfoCU;
 
-		string[] files;
-		binOutFile ~= "enum string[] CODE_UNITS = [";
-		if (isCodeUnitADirectory(name)) {
-			file = codeUnitGlob(name);
-			foreach(entry; dirEntries(buildPath(pathOfFiles, file), "*.d", SpanMode.depth)) {
-				if (ofile.exists(entry.name) && ofile.isFile(entry.name)) {
-					files ~= entry.name;
+        void discoverFiles() {
+            if (isCodeUnitADirectory(name)) {
+    			file = codeUnitGlob(name);
+    			foreach(entry; dirEntries(buildPath(pathOfFiles, file), "*.{d,di}", SpanMode.depth)) {
+    				if (ofile.exists(entry.name) && ofile.isFile(entry.name)) {
+    					files ~= entry.name;
+                        binInfoCU ~= entry.name;
+    				}
+    			}
+    		} else {
+    			if (ofile.exists(file) && ofile.isFile(file))
+    				files ~= (Path(pathOfFiles) ~ Path(file)).toNativeString();
+                binInfoCU ~= file;
+    		}
+        }
 
-					string modul = getModuleFromFile(entry.name);
-					if (modul !is null)
-						binOutFile ~= "\"" ~ modul ~ "\",";
-				}
-			}
-		} else {
-			if (ofile.exists(file) && ofile.isFile(file))
-				files ~= file;
+        void discoverDependencyFiles() {
+            // determine dependency files
+            bool[string] tfiles;
 
-			string modul = getModuleFromFile(file);
-			if (modul !is null)
-				binOutFile ~= "\"" ~ modul ~ "\"";
-		}
-		binOutFile ~= "];\r\n";
+            foreach(file2; files) {
+                file2 = Path(file2).relativeTo(Path(pathOfFiles)).toString();
 
-		// determine dependency files
-		bool[string] tfiles;
-	FN1: foreach(r, globs; config.dirDependencies) {
-			auto reg = regex(r);
-			foreach(match; matchAll(file, reg)) {
-				foreach(glob; globs) {
-					foreach(entry; dirEntries(pathOfFiles, glob, SpanMode.depth)) {
-						if (ofile.exists(entry.name) && ofile.isFile(entry.name))
-							tfiles[entry.name] = true;
-					}
-				}
-				continue FN1;
-			}
-		}
-		files ~= tfiles.keys;
-		tfiles.clear();
+                foreach(r, globs; config.dirDependencies) {
+                    if (globMatch(file2, r)) {
+                        foreach(glob; globs) {
+                            foreach(entry; dirEntries(pathOfFiles, "*.{d,di}", SpanMode.depth)) {
+                                if (globMatch(entry.name, buildPath(pathOfFiles, glob))) {
+                                    tfiles[entry.name] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-		// Dependency dirs to -I
-		bool[string] dependencyDirs;
-		// String import directories to -J
-		bool[string] strImports;
+            files ~= tfiles.keys;
+            tfiles.clear();
+        }
 
-		bool[string] codeDependencies; // dir_dependencies tier 2 glob values on each file, if the tier 1 value is a string import
-	F2: foreach(r, values; config.dirDependencies) {
-			auto reg = regex(r);
+        void discoverStrImports() {
+            // determine dependency string imports
+            bool[string] tfiles;
+            
+            foreach(file2; files) {
+                file2 = Path(file2).relativeTo(Path(pathOfFiles)).toString();
 
-			foreach(file2; files) {
-				foreach(match; matchAll(file2, reg)) {
-					foreach(value; values) {
-						codeDependencies[value] = (r.length > 3 && r[$-3 .. $] == "\\.d") || (r.length > 4 && r[$-4 .. $] == "\\.di");
-					}
-					continue F2;
-				}
-			}
-		}
-		foreach(glob, isCode; codeDependencies) {
-			if (isCode) {
-				foreach(entry; dirEntries(pathOfFiles, glob, SpanMode.depth)) {
-					dependencyDirs[dirName(entry.name)] = true;
-				}
-			} else if (glob.indexOf("*") > 0) {
-				foreach(entry; dirEntries(pathOfFiles, glob, SpanMode.depth)) {
-					strImports[dirName(entry.name)] = true;
-				}
-			} else
-				strImports[glob] = true;
-		}
+                foreach(r, globs; config.dirDependencies) {
+                    if (globMatch(file2, r)) {
+                        foreach(glob; globs) {
+                            foreach(entry; dirEntries(pathOfFiles, SpanMode.depth)) {
+                                if (!globMatch(entry.name, "*.{d,di}") && globMatch(entry.name, buildPath(pathOfFiles, glob))) {
+                                    tfiles[dirName(entry.name)] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            strImports ~= tfiles.keys;
+            tfiles.clear();
+        }
 
+        void outputBinInfo() {
+            string ofilePath = (Path(pathOfFiles) ~ Path(config.outputDir) ~ Path("bininfo.d")).toNativeString();
+            string ret = "module livereload.bininfo;\r\n";
 
-		isCompiling_ = true;
-		scope(exit) isCompiling_ = false;
+            ret ~= "enum string[] CODE_UNITS = [";
+            foreach(cu; binInfoCU) {
+                string modul = getModuleFromFile(cu);
+                if (modul !is null)
+                    ret ~= "\"" ~ modul ~ "\",";
+            }
+            ret ~= "];\r\n";
 
-		string binFile = codeUnitBinaryPath(name, file);
+            ret ~= "enum string[] DFILES = [";
+            foreach(filez; files) {
+                string modul = getModuleFromFile(filez);
+                if (modul !is null)
+                    ret ~= "\"" ~ modul ~ "\",";
+            }
+            ret ~= "];\r\n";
 
-		binOutFile ~= "enum string[] DFILES = [";
-		foreach(filez; files) {
-			string modul = getModuleFromFile(filez);
-			if (modul !is null)
-				binOutFile ~= "\"" ~ modul ~ "\",";
-		}
-		binOutFile ~= "];\r\n";
-		ofile.write(bininfopath, binOutFile);
-		files ~= bininfopath;
+            files ~= ofilePath;
+            ofile.write(ofilePath, ret);
+        }
 
-        /*auto depCU = dependencyForCodeUnit(name);
-        files ~= depCU.files;
-        //files ~= depCU.libs;
-        //TODO: files ~= depCU.libs;
+        isCompiling_ = true;
+        scope(exit) isCompiling_ = false;
 
-        string[] versionsA = depCU.versions;
-        string[] dependencyDirsA = dependencyDirs.keys ~ depCU.importPaths;
-        string[] strImportsA = strImports.keys /* ~ depCU.strImportPaths*//*;
+        discoverFiles();
+        discoverDependencyFiles();
+        discoverStrImports();
+        outputBinInfo();
 
-        // TODO: depCU.copyFiles
-
-		// TODO: assuming executable, perhaps shared libraries should be supported?
-        return (cast()compileHandler_).compileExecutable(this, binFile, files, versionsA, dependencyDirsA, strImportsA, name);*/
-        return false;
+        string binFile = codeUnitBinaryPath(name, file);
+        return dubCompile(name, lastNameOfPath(name, file), files, strImports);
 	}
 
 	void handleRecompilationRerun(string name, string file) {
@@ -556,21 +556,12 @@ mixin template Compilation() {
 		}
 	}
 
-	private shared {
-		string[string] namesOfCodeUnitsBins;
-	}
-
 	string codeUnitBinaryPath(string name, string file) {
 		import std.path : dirName, baseName;
 		import std.datetime : Clock;
 		string useName = name ~ (file is null ? "" : "");
 
-		string ret = buildPath(pathOfFiles, config.outputDir, name ~ "_" ~ baseName(file) ~ "_" ~ to!string(Path(dirName(file)).length) ~ "_" ~ to!string(Clock.currTime().toUnixTime()));
-
-		// TODO: are other extensions required?
-		version(Windows) {
-			ret ~= ".exe";
-		}
+		string ret = name ~ "_" ~ baseName(file) ~ "_" ~ to!string(Path(dirName(file)).length) ~ "_" ~ to!string(Clock.currTime().toUnixTime());
 
 		synchronized
 			namesOfCodeUnitsBins[useName] = cast(shared)ret;
