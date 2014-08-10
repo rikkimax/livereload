@@ -416,11 +416,13 @@ mixin template ChangeHandling() {
 
 		         foreach(unit; config.codeUnits) {
 					if (isCodeUnitADirectory(globCodeUnitName(unit))) {
-						if (globMatch(relPath, unit)) {
-							codeUnitFilesThatChanged[unit] = (bool[string]).init;
+						if (Path(relPath).startsWith(Path(unit)) || globMatch(relPath, unit)) {
+                            codeUnitFilesThatChanged[globCodeUnitName(unit)] = (bool[string]).init;
 						}
-					} else {
-						foreach(depDir; dependentDirectories) {
+                    } else if (globMatch(relPath, unit)) {
+                        codeUnitFilesThatChanged[globCodeUnitName(unit)][relPath] = true;
+                    } else {
+                        foreach(depDir; dependentDirectories) {
                             if (depDir == unit) {
                                 // good thats what I expect
                                 foreach(cue; dirEntries(pathOfFiles, SpanMode.depth)) {
