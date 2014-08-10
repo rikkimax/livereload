@@ -598,10 +598,19 @@ mixin template Compilation() {
 
 	void handleRecompilationRerun(string name, string file) {
 		stopCodeUnit(name, file);
+
+        import std.datetime;
+        import core.time;
+
+        auto start = Clock.currTime;
+
 		if (compileCodeUnit(name, file)) {
 			// TODO: log this?
 			executeCodeUnit(name, file);
 		}
+
+        auto end = Clock.currTime;
+        logInfo("Compilation took %s", (end-start).toString());
 	}
 
 	string codeUnitBinaryPath(string name, string file) {
