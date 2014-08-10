@@ -203,30 +203,34 @@ mixin template ToolChain() {
         bool compiledSuccessfully;
 
         //
+        try {
 
-        ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles[""] ~= srcFiles;
-        ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths[""] ~= strImports;
-        ofPackageToCodeUnit[cu].info.buildSettings.targetName = baseName(ofile);
-        ofPackageToCodeUnit[cu].info.buildSettings.targetPath = dirName(buildPath(config_.outputDir, ofile));
+            ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles[""] ~= srcFiles;
+            ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths[""] ~= strImports;
+            ofPackageToCodeUnit[cu].info.buildSettings.targetName = baseName(ofile);
+            ofPackageToCodeUnit[cu].info.buildSettings.targetPath = dirName(buildPath(config_.outputDir, ofile));
 
-        GeneratorSettings gensettings;
-        gensettings.platform = buildPlatform;
-        gensettings.config = dubToCodeUnit[cu].project.getDefaultConfiguration(buildPlatform);
-        gensettings.compiler = dubCompiler;
-        gensettings.buildType = "debug";
-        gensettings.linkCallback = (int ret, string output) {
-            if (ret == 0)
-                compiledSuccessfully = true;
-        };
-        
-        dubToCodeUnit[cu].generateProject("build", gensettings);
+            GeneratorSettings gensettings;
+            gensettings.platform = buildPlatform;
+            gensettings.config = dubToCodeUnit[cu].project.getDefaultConfiguration(buildPlatform);
+            gensettings.compiler = dubCompiler;
+            gensettings.buildType = "debug";
+            gensettings.linkCallback = (int ret, string output) {
+                if (ret == 0)
+                    compiledSuccessfully = true;
+            };
+            
+            dubToCodeUnit[cu].generateProject("build", gensettings);
 
-        // restore backups of values
+            // restore backups of values
 
-        ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles = packageToCodeUnit[cu].buildSettings.sourceFiles.dup;
-        ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths = packageToCodeUnit[cu].buildSettings.stringImportPaths.dup;
+            ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles = packageToCodeUnit[cu].buildSettings.sourceFiles.dup;
+            ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths = packageToCodeUnit[cu].buildSettings.stringImportPaths.dup;
 
-        return compiledSuccessfully;
+            return compiledSuccessfully;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
 
