@@ -61,11 +61,11 @@ void main(string[] args) {
 		return;
 	}
 
-	//new LiveReload(pathToFiles, compiler, configFile);
+	new LiveReload(pathToFiles, compiler, configFile);
 
-    testfunc(compiler);
+    //testfunc(compiler);
 
-	//runEventLoop();
+	runEventLoop();
 }
 
 bool testFor(string app) {
