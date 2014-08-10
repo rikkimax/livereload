@@ -1,13 +1,14 @@
-{	"name": "livereload",
-	"description": "Live reloading of software manager",
-	"copyright": "Copyright © 2014, Richard Andrew Cattermole",
-	"authors": ["Richard Andrew Cattermole"],
+{
+    "name": "livereload",
+    "description": "Live reloading of software manager",
+    "copyright": "Copyright © 2014, Richard Andrew Cattermole",
+    "authors": ["Richard Andrew Cattermole"],
 	"dependencies": {
-		"vibe-d": ">=0.7.20",
-        "dub": "==0.9.22-rc.1"
+		"dub": "==0.9.22-rc.1",
+		"vibe-d": "~>0.7.19-rc.4"
 	},
-    "subConfigurations": {
+	"subConfigurations": {
         "dub": "library-nonet"
     },
-	"versions": ["VibeCustomMain"]
+    "versions": ["VibeCustomMain"]
 }
