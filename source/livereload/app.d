@@ -77,7 +77,7 @@ bool testFor(string app) {
 	}
 }
 
-void testfunc(string compI) {
+/*void testfunc(string compI) {
     import dub.dub;
     import dub.project;
     import dub.compilers.compiler;
@@ -123,4 +123,4 @@ void testfunc(string compI) {
     vdub.generateProject("build", gensettings);
 
     vdub.shutdown();
-}
+}*/
