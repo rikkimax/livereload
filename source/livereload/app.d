@@ -26,12 +26,20 @@ void main(string[] args) {
 		chdir(environment.get("PWD", environment.get("CD", getcwd())));
 	}
 	pathToFiles = getcwd();
+    string configFile;
+    string compiler = "dmd";
+    string arch;
+
+    version(X86) {
+        arch = "x86";
+    } else version(X86_64) {
+        arch = "x86_64";
+    }
 
 	getOption("path", cast(string*)&pathToFiles, "Path of the files to operate on");
-	string compiler = "dmd";
 	getOption("compiler", &compiler, "Compiler to use. Default: dmd");
-	string configFile;
-	getOption("config", &configFile, "Configuration file to use. Default: ${--path}/livereload.txt");
+    getOption("config", &configFile, "Configuration file to use. Default: ${--path}/livereload.txt");
+    getOption("arch", &arch, "Architecture for the compiler to target. Default: x86 when built for 32bit and x86_64 for 64bit");
 
 	finalizeCommandLineOptions();
 
@@ -61,7 +69,7 @@ void main(string[] args) {
 		return;
 	}
 
-	new LiveReload(pathToFiles, compiler, configFile);
+	new LiveReload(pathToFiles, compiler, arch, configFile);
 
     //testfunc(compiler);
 

@@ -154,7 +154,7 @@ mixin template ToolChain() {
         string[] debugVersions;
         
         dubCompiler = getCompiler(compilerPath_);
-        buildPlatform = dubCompiler.determinePlatform(bs, compilerPath_);
+        buildPlatform = dubCompiler.determinePlatform(bs, compilerPath_, archToCompile_);
         bs.addDebugVersions(debugVersions);
 
         foreach(subpName; codeUnitNames) {

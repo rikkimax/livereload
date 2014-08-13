@@ -130,6 +130,7 @@ class LiveReload : ILiveReload {
 		string pathOfFiles_;
 		string compilerPath_;
 		string configFilePath_;
+        string archToCompile_;
 		LiveReloadConfig config_;
 
 		Task[] tasksToKill;
@@ -137,7 +138,7 @@ class LiveReload : ILiveReload {
 		bool isCompiling_;
 	}
 
-	this(string path, string compilerPath=null, string configFilePath = null) {
+	this(string path, string compilerPath=null, string archToCompile=null, string configFilePath = null) {
 		assert(exists(path) && isDir(path), "LiveReloading directory does not exist.");
 	
 		if (configFilePath is null)
@@ -147,6 +148,7 @@ class LiveReload : ILiveReload {
 		compilerPath_ = cast(shared)compilerPath;
 		configFilePath_ = cast(shared)configFilePath;
 		config_ = cast(shared)loadConfig(readText(configFilePath));
+        archToCompile_ = cast(shared)archToCompile;
 
 		start();
 	}
