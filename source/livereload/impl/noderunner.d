@@ -1,5 +1,6 @@
 ﻿module livereload.impl.noderunner;
 import livereload.defs;
+import livereload.impl.defs;
 
 mixin template NodeRunner() {
     package shared {

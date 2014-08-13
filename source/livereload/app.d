@@ -1,5 +1,5 @@
 ﻿module livereload.app;
-import livereload.defs;
+import livereload.impl;
 
 import vibe.d;
 
