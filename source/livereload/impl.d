@@ -3,7 +3,7 @@ import livereload.defs;
 import vibe.inet.path;
 import vibe.core.file;
 
-mixin template CodeUnits() {
+/*mixin template CodeUnits() {
 	@property {
 		string[] codeUnitNames() {
 			string[] ret;
@@ -102,7 +102,7 @@ mixin template CodeUnits() {
 		
 		return ret.keys;
 	}
-}
+}*/
 
 mixin template ToolChain() {
     private {
@@ -166,7 +166,7 @@ mixin template ToolChain() {
 
             if (usePackage !is null) {
                 packageToCodeUnit[subpName] = PackageInfo();
-				packageToCodeUnit[subpName].parseJson(usePackage.info.toJson());
+                packageToCodeUnit[subpName].parseJson(usePackage.info.toJson(), vdub.projectName);
                 ofPackageToCodeUnit[subpName] = usePackage;
 
                 vdub.loadPackage(usePackage);

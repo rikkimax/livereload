@@ -176,7 +176,7 @@ class LiveReload : ILiveReload {
 		bool isCompiling() { return cast()isCompiling_; }
 	}
 
-	mixin CodeUnits; // util for code units
+    import livereload.impl2.codeUnits; mixin CodeUnits; // util for code units
 	mixin ToolChain; // confirm we can compile
 	mixin MonitorService; // tell us when changes occur in file system
 	mixin ChangeHandling; // transforms the changes that occured into code unit names and main files for compilation/running
