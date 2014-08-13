@@ -142,10 +142,6 @@ mixin template ToolChain() {
 		synchronized
 			isCompiling_ = true;
 
-        foreach(str, dub; dubToCodeUnit) {
-            dub.shutdown();
-        }
-
         packageToCodeUnit = typeof(packageToCodeUnit).init;
         ofPackageToCodeUnit = typeof(ofPackageToCodeUnit).init;
         dubToCodeUnit = typeof(dubToCodeUnit).init;
@@ -170,14 +166,14 @@ mixin template ToolChain() {
 
             if (usePackage !is null) {
                 packageToCodeUnit[subpName] = PackageInfo();
-                packageToCodeUnit[subpName].parseJson(usePackage.info.toJson(), vdub.projectName);
+				packageToCodeUnit[subpName].parseJson(usePackage.info.toJson());
                 ofPackageToCodeUnit[subpName] = usePackage;
 
                 vdub.loadPackage(usePackage);
                 dubToCodeUnit[subpName] = vdub;
 
                 vdub.upgrade(UpgradeOptions.select);
-                vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly|UpgradeOptions.useCachedResult);
+                vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly);
                 vdub.project.validate();
             }
         }
