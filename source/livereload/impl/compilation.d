@@ -4,14 +4,17 @@ import vibe.inet.path;
 import vibe.core.file;
 
 mixin template Compilation() {
+    import std.file : dirEntries, SpanMode;
+    import std.traits : ReturnType;
+
     private shared {
         string[string] namesOfCodeUnitsBins;
     }
 
 	bool compileCodeUnit(string name, string file) {
-		import std.path : dirName, globMatch;
+        import livereload.util;
+        import std.path : dirName, globMatch;
 		import std.string : indexOf;
-		import std.file : dirEntries, SpanMode;
 		import ofile = std.file;
 		import std.datetime : Clock;
 
@@ -19,18 +22,22 @@ mixin template Compilation() {
         string[] strImports;
         string[] binInfoCU;
 
+        ReturnType!dirEntries entries;
+
         void discoverFiles() {
             if (isCodeUnitADirectory(name)) {
     			file = codeUnitGlob(name);
-    			foreach(entry; dirEntries(buildPath(pathOfFiles, file), "*.{d,di}", SpanMode.depth)) {
-    				if (ofile.exists(entry.name) && ofile.isFile(entry.name)) {
+
+                entries = dirEntries(buildPath(pathOfFiles, file), SpanMode.depth); // cache result removes like 30ms from running time.
+
+                foreach(entry; entries) {
+                    if (isDExt(entry.name)) {
     					files ~= entry.name;
                         binInfoCU ~= entry.name;
     				}
     			}
     		} else {
-    			if (ofile.exists(file) && ofile.isFile(file))
-    				files ~= (Path(pathOfFiles) ~ Path(file)).toNativeString();
+                files ~= buildPath(pathOfFiles, file);
                 binInfoCU ~= file;
     		}
         }
@@ -69,8 +76,8 @@ mixin template Compilation() {
                 foreach(r, globs; config.dirDependencies) {
                     if (globMatch(file2, r)) {
                         foreach(glob; globs) {
-                            foreach(entry; dirEntries(pathOfFiles, SpanMode.depth)) {
-                                if (!globMatch(entry.name, "*.{d,di}") && globMatch(entry.name, buildPath(pathOfFiles, glob))) {
+                            foreach(entry; entries) {
+                                if (!isDExt(entry.name) && globMatch(entry.name, buildPath(pathOfFiles, glob))) {
                                     tfiles[dirName(entry.name)] = true;
                                 }
                             }
@@ -80,11 +87,10 @@ mixin template Compilation() {
             }
             
             strImports ~= tfiles.keys;
-            tfiles.clear();
         }
 
         void outputBinInfo() {
-            string ofilePath = (Path(pathOfFiles) ~ Path(config.outputDir) ~ Path("bininfo.d")).toNativeString();
+            string ofilePath = buildPath(pathOfFiles, config.outputDir, "bininfo.d");
             string ret = "module livereload.bininfo;\r\n";
 
             ret ~= "enum string[] CODE_UNITS = [";
@@ -128,12 +134,15 @@ mixin template Compilation() {
         auto start = Clock.currTime;
 
 		if (compileCodeUnit(name, file)) {
+            auto end = Clock.currTime;
+            logInfo("Compilation took %s", (end-start).toString());
+
 			// TODO: log this?
 			executeCodeUnit(name, file);
-		}
-
-        auto end = Clock.currTime;
-        logInfo("Compilation took %s", (end-start).toString());
+        } else {
+            auto end = Clock.currTime;
+            logInfo("Compilation took %s", (end-start).toString());
+        }
 	}
 
 	string codeUnitBinaryPath(string name, string file) {

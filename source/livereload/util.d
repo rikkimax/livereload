@@ -99,3 +99,19 @@ DirectoryWatcher watchDirectory2(string path_, bool recursive=true) {
 
 	return new FakeDirectoryWatcher;
 }
+
+pure bool isDExt(string ext) {
+    if (ext.length >= 2)
+        if (ext[$-2 .. $] == ".d")
+            return true;
+    if (ext.length >= 3)
+        if (ext[$-3 .. $] == ".di")
+            return true;
+
+    return false;
+}
+
+unittest {
+    assert(isDExt("/dir/dir/myfile.d"));
+    assert(isDExt("/dir/dir/myfile.di"));
+}

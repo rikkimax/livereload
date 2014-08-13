@@ -108,6 +108,8 @@ mixin template ToolChain() {
             gensettings.config = dubToCodeUnit[cu].project.getDefaultConfiguration(buildPlatform);
             gensettings.compiler = dubCompiler;
             gensettings.buildType = "debug";
+            gensettings.buildMode = BuildMode.allAtOnce;
+
             gensettings.linkCallback = (int ret, string output) {
                 if (ret == 0)
                     compiledSuccessfully = true;
