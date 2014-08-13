@@ -1,7 +1,5 @@
-﻿module livereload.impl2.codeUnits;
+﻿module livereload.impl.codeUnits;
 import livereload.defs;
-//import vibe.inet.path;
-//import vibe.core.file;
 
 mixin template CodeUnits() {
     @property {

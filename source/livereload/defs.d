@@ -121,7 +121,6 @@ interface ILiveReload {
 
 class LiveReload : ILiveReload {
 	private shared {
-		import livereload.impl;
 		import vibe.d;
 		import std.file : exists, isDir, isFile, readText;
 		import std.path : buildPath;
@@ -176,10 +175,10 @@ class LiveReload : ILiveReload {
 		bool isCompiling() { return cast()isCompiling_; }
 	}
 
-    import livereload.impl2.codeUnits; mixin CodeUnits; // util for code units
-	mixin ToolChain; // confirm we can compile
-	mixin MonitorService; // tell us when changes occur in file system
-	mixin ChangeHandling; // transforms the changes that occured into code unit names and main files for compilation/running
-	mixin Compilation; // compiles code
-	mixin NodeRunner; // runs code unit files
+    import livereload.impl.codeUnits; mixin CodeUnits; // util for code units
+    import livereload.impl.toolchain; mixin ToolChain; // confirm we can compile
+    import livereload.impl.monitor; mixin MonitorService; // tell us when changes occur in file system
+    import livereload.impl.changeHandler; mixin ChangeHandling; // transforms the changes that occured into code unit names and main files for compilation/running
+    import livereload.impl.compilation; mixin Compilation; // compiles code
+    import livereload.impl.noderunner; mixin NodeRunner; // runs code unit files
 }
