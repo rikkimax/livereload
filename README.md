@@ -37,5 +37,4 @@ Note OUTPUTDIRNAME is generated based on e.g. time and file.
 
 TODO:
 -----
-* --arch
 * Release builds
