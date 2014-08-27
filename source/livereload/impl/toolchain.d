@@ -7,12 +7,12 @@ mixin template ToolChain() {
         import dub.dub;
         import dub.compilers.compiler;
         import dub.generators.generator;
-        
-        PackageInfo[string] packageToCodeUnit;
+
         Package[string] ofPackageToCodeUnit;
         Dub[string] dubToCodeUnit;
         BuildPlatform buildPlatform;
         Compiler dubCompiler;
+        string buildConfig;
     }
     
     bool checkToolchain() {
@@ -39,7 +39,7 @@ mixin template ToolChain() {
         synchronized
             isCompiling_ = true;
         
-        packageToCodeUnit = typeof(packageToCodeUnit).init;
+        //packageToCodeUnit = typeof(packageToCodeUnit).init;
         ofPackageToCodeUnit = typeof(ofPackageToCodeUnit).init;
         dubToCodeUnit = typeof(dubToCodeUnit).init;
         
@@ -62,8 +62,6 @@ mixin template ToolChain() {
             }
             
             if (usePackage !is null) {
-                packageToCodeUnit[subpName] = PackageInfo();
-                packageToCodeUnit[subpName].parseJson(usePackage.info.toJson(), vdub.projectName);
                 ofPackageToCodeUnit[subpName] = usePackage;
                 
                 vdub.loadPackage(usePackage);
@@ -72,6 +70,8 @@ mixin template ToolChain() {
                 vdub.upgrade(UpgradeOptions.select);
                 vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly);
                 vdub.project.validate();
+
+                buildConfig = vdub.project.getDefaultConfiguration(buildPlatform);
             }
         }
         
@@ -94,18 +94,18 @@ mixin template ToolChain() {
         }
         
         bool compiledSuccessfully;
-        
+
         //
         try {
             
-            ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles[""] ~= srcFiles;
-            ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths[""] ~= strImports;
+            ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles[""] = srcFiles;
+            ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths[""] = strImports;
             ofPackageToCodeUnit[cu].info.buildSettings.targetName = baseName(ofile);
             ofPackageToCodeUnit[cu].info.buildSettings.targetPath = dirName(buildPath(config_.outputDir, ofile));
             
             GeneratorSettings gensettings;
             gensettings.platform = buildPlatform;
-            gensettings.config = dubToCodeUnit[cu].project.getDefaultConfiguration(buildPlatform);
+            gensettings.config = buildConfig;
             gensettings.compiler = dubCompiler;
             gensettings.buildType = "debug";
             gensettings.buildMode = BuildMode.allAtOnce;
@@ -116,11 +116,6 @@ mixin template ToolChain() {
             };
             
             dubToCodeUnit[cu].generateProject("build", gensettings);
-            
-            // restore backups of values
-            
-            ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles = packageToCodeUnit[cu].buildSettings.sourceFiles.dup;
-            ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths = packageToCodeUnit[cu].buildSettings.stringImportPaths.dup;
             
             return compiledSuccessfully;
         } catch (Exception e) {
