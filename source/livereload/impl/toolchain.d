@@ -108,7 +108,7 @@ mixin template ToolChain() {
             gensettings.config = buildConfig;
             gensettings.compiler = dubCompiler;
             gensettings.buildType = "debug";
-            gensettings.buildMode = BuildMode.allAtOnce;
+            gensettings.buildMode = BuildMode.separate;
 
             gensettings.linkCallback = (int ret, string output) {
                 if (ret == 0)
@@ -119,6 +119,7 @@ mixin template ToolChain() {
             
             return compiledSuccessfully;
         } catch (Exception e) {
+            logError(e.toString());
             return false;
         }
     }

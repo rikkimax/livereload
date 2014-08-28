@@ -134,12 +134,12 @@ mixin template Compilation() {
         auto start = Clock.currTime;
 
 		if (compileCodeUnit(name, file)) {
-            logInfo("Compilation took %s", (Clock.currTime-start).toString());
+            logInfo("Succesfull compilation took %s", (Clock.currTime-start).toString());
 
 			// TODO: log this?
 			executeCodeUnit(name, file);
         } else {
-            logInfo("Compilation took %s", (Clock.currTime-start).toString());
+            logInfo("Failure compilation took %s", (Clock.currTime-start).toString());
         }
 	}
 
