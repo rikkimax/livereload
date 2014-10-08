@@ -35,6 +35,13 @@ Please note the first line is required.<br/>
 Stdout is stored as: bin/OUTPUTDIRNAME/stdout.log<br/>
 Note OUTPUTDIRNAME is generated based on e.g. time and file.
 
+Currently Dub does not like to include itself.<br/>
+Work around:<br/>
+In some directory aka your projects directory (non local to livereload)<br/>
+$ git clone https://github.com/D-Programming-Language/dub.git
+$ git checkout 0.9.22
+$ dub add-local .
+
 TODO:
 -----
 * Release builds
