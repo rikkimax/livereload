@@ -63,7 +63,7 @@ mixin template Compilation() {
             }
 
             files ~= tfiles.keys;
-            tfiles.clear();
+            tfiles = typeof(tfiles).init;
         }
 
         void discoverStrImports() {
@@ -91,23 +91,23 @@ mixin template Compilation() {
 
         void outputBinInfo() {
             string ofilePath = buildPath(pathOfFiles, config.outputDir, "bininfo.d");
-            string ret = "module livereload.bininfo;\r\n";
+            string ret = "module livereload.bininfo;\r\nimport std.typecons : tuple;\r\n";
 
-            ret ~= "enum string[] CODE_UNITS = [";
+            ret ~= "enum CODE_UNITS = tuple(";
             foreach(cu; binInfoCU) {
                 string modul = getModuleFromFile(cu);
                 if (modul !is null)
                     ret ~= "\"" ~ modul ~ "\",";
             }
-            ret ~= "];\r\n";
+            ret ~= ");\r\n";
 
-            ret ~= "enum string[] DFILES = [";
+            ret ~= "enum DFILES = tuple(";
             foreach(filez; files) {
                 string modul = getModuleFromFile(filez);
                 if (modul !is null)
                     ret ~= "\"" ~ modul ~ "\",";
             }
-            ret ~= "];\r\n";
+            ret ~= ");\r\n";
 
             files ~= ofilePath;
             ofile.write(ofilePath, ret);
