@@ -38,8 +38,7 @@ mixin template ToolChain() {
         
         synchronized
             isCompiling_ = true;
-        
-        //packageToCodeUnit = typeof(packageToCodeUnit).init;
+
         ofPackageToCodeUnit = typeof(ofPackageToCodeUnit).init;
         dubToCodeUnit = typeof(dubToCodeUnit).init;
         
@@ -62,13 +61,15 @@ mixin template ToolChain() {
             }
             
             if (usePackage !is null) {
+                usePackage.info.buildSettings.versions[""] ~= "LiveReload_Built";
+
                 ofPackageToCodeUnit[subpName] = usePackage;
                 
                 vdub.loadPackage(usePackage);
                 dubToCodeUnit[subpName] = vdub;
                 
                 vdub.upgrade(UpgradeOptions.select);
-                vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly);
+                //vdub.upgrade(UpgradeOptions.upgrade|UpgradeOptions.printUpgradesOnly);
                 vdub.project.validate();
 
                 buildConfig = vdub.project.getDefaultConfiguration(buildPlatform);
@@ -97,7 +98,7 @@ mixin template ToolChain() {
 
         //
         try {
-            
+
             ofPackageToCodeUnit[cu].info.buildSettings.sourceFiles[""] = srcFiles;
             ofPackageToCodeUnit[cu].info.buildSettings.stringImportPaths[""] = strImports;
             ofPackageToCodeUnit[cu].info.buildSettings.targetName = baseName(ofile);
