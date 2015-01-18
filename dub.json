@@ -5,7 +5,7 @@
     "authors": ["Richard Andrew Cattermole"],
 	"dependencies": {
 		"dub": ">=0.9.22",
-		"vibe-d": ">=0.7.21-rc.2"
+		"vibe-d": ">=0.7.22"
 	},
 	"subConfigurations": {
         "dub": "library-nonet"
