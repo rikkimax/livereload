@@ -105,7 +105,8 @@ mixin template ToolChain() {
     
     bool dubCompile(string cu, string ofile, string[] srcFiles, string[] strImports) {
         import std.string : join;
-        import std.path : dirName, baseName;
+        import std.path : dirName, baseName, buildPath;
+		import std.conv : text;
         
         logInfo("Told to compile %s %s [%s] [%s]", cu, ofile, srcFiles.join(", "), strImports.join(", "));
         
@@ -132,12 +133,17 @@ mixin template ToolChain() {
             gensettings.config = buildConfig;
             gensettings.compiler = dubCompiler;
             gensettings.buildType = "debug";
-            gensettings.buildMode = BuildMode.separate;
+            gensettings.buildMode = BuildMode.allAtOnce;
+			gensettings.buildSettings.targetType = TargetType.executable;
 
-            gensettings.linkCallback = (int ret, string output) {
-                if (ret == 0)
-                    compiledSuccessfully = true;
-            };
+			gensettings.compileCallback = (int ret, string output) {
+				if (ret == 0)
+					compiledSuccessfully = true;
+				else {
+					import std.file;
+					append(buildPath(ofPackageToCodeUnit[cu].info.buildSettings.targetPath, "error.log"), "=================" ~ text(ret) ~ "==================\n" ~ output ~ "\n\n");
+				}
+			};
             
             dubToCodeUnit[cu].generateProject("build", gensettings);
             
