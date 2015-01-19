@@ -28,7 +28,7 @@ mixin template CodeUnits() {
     @property {
         string[] codeUnitNames() {
             string[] ret;
-            string depPath = buildPath(pathOfFiles, "package.json");
+            string depPath = buildPath(pathOfFiles, "dub.json");
             
             if (exists(depPath) && isFile(depPath)) {
                 Json json = parseJsonString(readText(depPath));

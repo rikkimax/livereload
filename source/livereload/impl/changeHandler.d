@@ -41,7 +41,7 @@ mixin template ChangeHandling() {
             if (change.type == DirectoryChangeType.added || change.type == DirectoryChangeType.modified) {
                 if (change.path.startsWith(Path(buildPath(pathOfFiles, config.outputDir))))
                     continue;
-                if (change.path == (Path(buildPath(pathOfFiles, "package.json")))) {
+                if (change.path == (Path(buildPath(pathOfFiles, "dub.json")))) {
                     dubDirChanged = true;
                     continue;
                 }
